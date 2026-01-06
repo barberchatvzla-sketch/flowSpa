@@ -264,15 +264,15 @@
             
             <div class="step active" id="step-1">
                 <h1>Bienvenido</h1>
-                <p class="subtitle" id="step1Subtitle">Ingresa tu n˙mero celular para comenzar.</p>
+                <p class="subtitle" id="step1Subtitle">Ingresa tu nÓÄ≠ero celular para comenzar.</p>
                 
                 <div class="input-group">
-                    <input type="tel" id="inputPhone" placeholder="Tu TelÈfono" autocomplete="tel" oninput="app.checkPhoneInput(this)">
+                    <input type="tel" id="inputPhone" placeholder="Tu TelÂ∂®ono" autocomplete="tel" oninput="app.checkPhoneInput(this)">
                     <div class="spinner" id="phoneSpinner"></div>
                 </div>
 
                 <div id="new-user-fields">
-                    <p style="color:var(--color-fuchsia); font-size:0.9rem; margin-bottom:15px;">?? Parece que es tu primera vez. °RegÌstrate abajo!</p>
+                    <p style="color:var(--color-fuchsia); font-size:0.9rem; margin-bottom:15px;">?? Parece que es tu primera vez. ÔπïegÁñÑtrate abajo!</p>
                     <div class="input-group">
                         <input type="text" id="inputName" placeholder="Tu Nombre" autocomplete="given-name">
                     </div>
@@ -283,8 +283,8 @@
 
                 <div id="welcome-overlay">
                     <div class="welcome-icon">?</div>
-                    <h2 style="font-family: var(--font-serif); font-size: 2rem; margin-bottom: 15px;">°Hola de nuevo!</h2>
-                    <p id="welcome-text" style="font-size: 1.1rem; color: #555; line-height: 1.6;">Espero que estÈs bien.</p>
+                    <h2 style="font-family: var(--font-serif); font-size: 2rem; margin-bottom: 15px;">Ôºüola de nuevo!</h2>
+                    <p id="welcome-text" style="font-size: 1.1rem; color: #555; line-height: 1.6;">Espero que estÂª• bien.</p>
                 </div>
             </div>
 
@@ -312,7 +312,7 @@
 
             <div class="step" id="step-3">
                 <h1>Fecha</h1>
-                <p class="subtitle">Selecciona el dÌa perfecto.</p>
+                <p class="subtitle">Selecciona el dÁá∞ perfecto.</p>
                 <div class="calendar-wrapper">
                     <div class="calendar-header">
                         <button class="btn-nav" onclick="calendar.changeMonth(-1)">&lt;</button>
@@ -330,11 +330,11 @@
             </div>
 
             <div class="step" id="step-5">
-                <h1>ConfirmaciÛn</h1>
+                <h1>ConfirmaciÈèÆ</h1>
                 <p class="subtitle">Verifica los detalles antes de finalizar.</p>
                 <div class="summary-box">
                     <div class="summary-row"><span>Cliente</span><span id="sumName" style="font-weight:600">--</span></div>
-                    <div class="summary-row"><span>TelÈfono</span><span id="sumPhone" style="font-weight:600">--</span></div>
+                    <div class="summary-row"><span>TelÂ∂®ono</span><span id="sumPhone" style="font-weight:600">--</span></div>
                     <div class="summary-row"><span>Tratamiento</span><span id="sumService" style="font-weight:600">--</span></div>
                     <div class="summary-row"><span>Fecha</span><span id="sumDate" style="font-weight:600">--</span></div>
                     <div class="summary-row" style="border:none"><span>Hora</span><span id="sumTime" style="font-weight:600">--</span></div>
@@ -349,7 +349,7 @@
         <div class="modal-overlay" id="successModal">
             <div class="modal-card">
                 <div class="success-check">?</div>
-                <h2>°Confirmado!</h2>
+                <h2>„ÄÇonfirmado!</h2>
                 <p style="color:#666; margin-bottom:30px">Tu experiencia ha sido reservada.</p>
                 <button class="btn-styled btn-fuchsia-glow" onclick="location.reload()">Finalizar</button>
             </div>
@@ -368,7 +368,7 @@
         </header>
         <div class="chat-body" id="chatContainer">
             <div style="text-align:center; color:#999; font-size:0.9rem; margin-top:20px;">
-                Inicia una conversaciÛn con nosotros.
+                Inicia una conversaciÈèÆ con nosotros.
             </div>
         </div>
         <div class="chat-footer">
@@ -378,7 +378,7 @@
     </div>
 
     <script>
-        // CONFIGURACI”N SUPABASE
+        // CONFIGURACIÁ≤ç SUPABASE
         const SUPABASE_URL = 'https://luwcggpjvsrhvdwjiarw.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1d2NnZ3BqdnNyaHZkd2ppYXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NjE4NTcsImV4cCI6MjA4MzIzNzg1N30.L_Yl3cVXdvLGcz3VZD-icJXAE4_myxqGo6o5dAkKw0M';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -440,18 +440,18 @@
                 this.generateTimeSlots(); 
                 chatApp.init(); 
 
-                // --- NUEVA L”GICA DE PERSISTENCIA ---
+                // --- NUEVA LÁ¨âICA DE PERSISTENCIA ---
                 const cachedPhone = localStorage.getItem(STORAGE_KEY);
                 if(cachedPhone) {
-                    console.log("SesiÛn recuperada:", cachedPhone);
+                    console.log("SesiÈèÆ recuperada:", cachedPhone);
                     // Llenamos el input visualmente por si acaso
                     document.getElementById('inputPhone').value = cachedPhone;
-                    // Forzamos la verificaciÛn inmediata
+                    // Forzamos la verificaciÈèÆ inmediata
                     this.verifyUser(cachedPhone);
                 }
             },
 
-            // LOGICA AUTOM¡TICA DEL TEL…FONO
+            // LOGICA AUTOMÁ≥ûICA DEL TEL‰∏åONO
             checkPhoneInput(input) {
                 input.value = input.value.replace(/[^0-9]/g, '');
                 if(input.value.length <11 ) {
@@ -491,7 +491,7 @@
                     chatApp.enable();
 
                     const welcomeMsg = document.getElementById('welcome-overlay');
-                    document.getElementById('welcome-text').innerHTML = `Hola, espero que estÈs bien.<br>Bienvenida de nuevo, <b>${user.nombre} ${user.apellido}</b>`;
+                    document.getElementById('welcome-text').innerHTML = `Hola, espero que estÂª• bien.<br>Bienvenida de nuevo, <b>${user.nombre} ${user.apellido}</b>`;
                     welcomeMsg.style.display = 'flex'; 
 
                     document.getElementById('actionBar').style.display = 'none';
@@ -512,10 +512,10 @@
                 }
             },
 
-            // --- NUEVA FUNCI”N PARA BORRAR CACHE (LOGOUT) ---
+            // --- NUEVA FUNCIÁ≤ç PARA BORRAR CACHE (LOGOUT) ---
             logout() {
                 localStorage.removeItem(STORAGE_KEY); // Borra el dato
-                location.reload(); // Recarga la p·gina para volver al inicio
+                location.reload(); // Recarga la pÂ¢îina para volver al inicio
             },
 
             nextStep() {
@@ -735,4 +735,5 @@
         };
     </script>
 </body>
+
 </html>
