@@ -418,20 +418,46 @@
                     this.subscribeUser(registration);
                 } catch (error) { console.error('Error SW:', error); }
             },
+// Dentro de tu objeto 'admin' en index.html
 
-            async subscribeUser(registration) {
-                const subscribeOptions = {
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(this.publicKey)
-                };
-                try {
-                    const subscription = await registration.pushManager.subscribe(subscribeOptions);
-                    this.saveSubscriptionToSupabase(subscription);
-                } catch (error) {
-                    if (Notification.permission === 'denied') console.warn('Permiso notificaciones denegado');
-                    else console.error('Fallo suscripción push:', error);
-                }
-            },
+async subscribeUser() {
+    if (!('serviceWorker' in navigator)) {
+        console.log('Service Worker no soportado');
+        return;
+    }
+
+    try {
+        // 1. REGISTRAR explícitamente el Service Worker
+        // Asegúrate de que '/sw.js' está en la carpeta raíz
+        await navigator.serviceWorker.register('/sw.js');
+
+        // 2. IMPORTANTE: Esperar a que esté "ready" (Activo)
+        // Esto soluciona el error "no active Service Worker"
+        const registration = await navigator.serviceWorker.ready;
+
+        // 3. Suscribirse (usando la VAPID PUBLIC KEY nueva que generaste)
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: 'AQUI_TU_VAPID_PUBLIC_KEY_NUEVA' 
+        });
+
+        console.log('Suscripción generada:', subscription);
+
+        // 4. Guardar en Supabase (usando upsert para evitar duplicados)
+        const { error } = await supabaseClient
+            .from('admin_subscriptions')
+            .upsert({ 
+                codigo_negocio: this.code,
+                subscription: subscription 
+            }, { onConflict: 'subscription' });
+
+        if (error) throw error;
+        console.log('✅ Suscripción guardada en DB');
+
+    } catch (err) {
+        console.error('Fallo suscripción push:', err);
+    }
+}
 
             async saveSubscriptionToSupabase(subscription) {
                 if (!admin.code) return;
@@ -770,3 +796,4 @@
     </script>
 </body>
 </html>
+
