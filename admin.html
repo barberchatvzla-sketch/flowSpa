@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Glow Admin Portal - CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root {
+            --bg: #050505;
+            --card: #111;
+            --text: #fff;
+            --accent: #E000E0;
+            --success: #00E08F;
+            --danger: #FF2E2E;
+            --gray: #888;
+            --border: #222;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Manrope', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+
+        /* LOGIN SCREEN */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 99999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        
+        .brand { font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 30px; }
+        .brand span { color: var(--accent); }
+
+        .login-box { width: 100%; max-width: 350px; text-align: center; }
+        
+        input {
+            width: 100%; padding: 15px; background: #222; border: 1px solid #333;
+            color: white; border-radius: 12px; font-size: 1.1rem;
+            margin-bottom: 20px; outline: none; letter-spacing: 1px;
+        }
+        input:focus { border-color: var(--accent); }
+        
+        #businessCodeInput { text-align: center; text-transform: uppercase; letter-spacing: 2px; }
+
+        button {
+            width: 100%; padding: 15px; border-radius: 50px; border: none;
+            font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 1rem;
+        }
+        .btn-primary { background: var(--accent); color: white; box-shadow: 0 0 20px rgba(224,0,224,0.3); }
+        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 0 30px rgba(224,0,224,0.5); }
+
+        /* DASHBOARD */
+        #dashboard { display: none; padding: 20px; max-width: 800px; margin: 0 auto; width: 100%; padding-bottom: 80px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-top: 20px; }
+        .header h2 { font-family: 'Playfair Display', serif; }
+        .logout { background: transparent; color: var(--gray); width: auto; padding: 5px 10px; font-size: 0.9rem; }
+
+        /* NAV TABS */
+        .nav-tabs { display: flex; gap: 20px; margin-bottom: 25px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+        .tab-btn {
+            background: transparent; color: var(--gray); padding: 10px 5px; border-radius: 0; width: auto; white-space: nowrap;
+            border-bottom: 2px solid transparent; cursor: pointer; font-size: 1rem;
+        }
+        .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+        
+        /* STATS & COMMON */
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); padding: 20px; border-radius: 16px; text-align: center; border: 1px solid var(--border); }
+        .stat-num { font-size: 2rem; font-weight: 700; color: var(--text); }
+        .stat-label { font-size: 0.8rem; color: var(--gray); text-transform: uppercase; }
+
+        /* VIEWS */
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* NOTIFICACIONES TOAST (NUEVO) */
+        #toast-container {
+            position: fixed; top: 20px; right: 20px; z-index: 100000;
+            display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+        .toast {
+            background: rgba(20, 20, 20, 0.95); border: 1px solid #333;
+            border-left: 4px solid var(--accent);
+            color: white; padding: 15px 20px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            min-width: 300px; transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: all; display: flex; align-items: center; gap: 15px;
+        }
+        .toast.active { transform: translateX(0); }
+        .toast-icon { font-size: 1.8rem; color: var(--accent); }
+        .toast-content h4 { font-size: 0.95rem; margin-bottom: 2px; font-weight: 600; }
+        .toast-content p { font-size: 0.85rem; color: #aaa; margin: 0; }
+
+        /* CALENDARIO & STATS */
+        .calendar-stats-container {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px;
+        }
+        .c-stat-box {
+            background: linear-gradient(145deg, #1a1a1a, #111);
+            padding: 20px; border-radius: 20px; border: 1px solid var(--border);
+            position: relative; overflow: hidden;
+        }
+        .c-stat-box h3 { font-size: 2.5rem; font-family: 'Playfair Display', serif; margin-bottom: 5px; z-index: 2; position: relative; }
+        .c-stat-box p { color: #888; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; z-index: 2; position: relative; }
+        
+        .progress-bg { width: 100%; height: 6px; background: #333; border-radius: 3px; margin-top: 15px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+
+        /* Calendario Grid */
+        .calendar-frame { background: var(--card); border-radius: 24px; padding: 20px; border: 1px solid var(--border); }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .cal-header h3 { font-family: 'Playfair Display'; font-size: 1.2rem; }
+        .cal-nav-btn { background: #222; border: none; width: 35px; height: 35px; border-radius: 50%; color: white; cursor: pointer; }
+        
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; }
+        .cal-day-name { color: #666; font-size: 0.8rem; margin-bottom: 10px; font-weight: 600; }
+        
+        .cal-day { 
+            aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 12px; cursor: pointer; transition: 0.2s; position: relative; font-size: 0.95rem;
+            border: 1px solid transparent;
+        }
+        .cal-day:hover { background: #222; }
+        .cal-day.empty { pointer-events: none; }
+        .cal-day.today { background: #222; color: var(--accent); border-color: var(--accent); font-weight: bold; }
+        
+        .cal-dot { 
+            width: 5px; height: 5px; background: var(--accent); border-radius: 50%; 
+            margin-top: 4px; opacity: 0; transform: scale(0); transition: 0.3s;
+        }
+        .cal-day.has-event .cal-dot { opacity: 1; transform: scale(1); }
+        .cal-day.has-event.pending .cal-dot { background: #ffcc00; }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+            z-index: 10000; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        
+        .modal-content {
+            background: #151515; width: 90%; max-width: 400px; border-radius: 24px;
+            padding: 30px; position: relative; border: 1px solid #333;
+            transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        
+        .modal-date { font-family: 'Playfair Display'; font-size: 1.8rem; margin-bottom: 5px; }
+        .modal-subtitle { color: #888; font-size: 0.9rem; margin-bottom: 25px; }
+        
+        .event-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .event-item { 
+            background: #0a0a0a; padding: 15px; border-radius: 16px; border: 1px solid #222; 
+            display: flex; align-items: center; gap: 15px; 
+        }
+        .event-time { font-weight: 700; color: var(--accent); font-size: 0.9rem; width: 45px; }
+        .event-details h4 { font-size: 1rem; color: white; margin-bottom: 2px; }
+        .event-details p { font-size: 0.8rem; color: #888; }
+        .event-status { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; }
+
+        /* RESERVAS STYLES */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .filter-chip { 
+            padding: 8px 16px; background: #222; border-radius: 20px; font-size: 0.9rem; color: var(--gray); cursor: pointer; white-space: nowrap; 
+        }
+        .filter-chip.active { background: var(--text); color: var(--bg); }
+
+        .bookings-list { display: flex; flex-direction: column; gap: 15px; }
+        .booking-card {
+            background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 10px; position: relative;
+        }
+        .b-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .b-name { font-weight: 600; font-size: 1.1rem; }
+        .b-service { color: var(--accent); font-size: 0.9rem; }
+        .b-details { display: flex; gap: 20px; color: #ccc; font-size: 0.95rem; margin: 5px 0 15px 0; }
+        .b-detail-item { display: flex; align-items: center; gap: 6px; }
+        .b-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn-action { padding: 10px; border-radius: 8px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
+        .btn-approve { background: rgba(0, 224, 143, 0.1); color: var(--success); border: 1px solid rgba(0, 224, 143, 0.3); }
+        .btn-reject { background: rgba(255, 46, 46, 0.1); color: var(--danger); border: 1px solid rgba(255, 46, 46, 0.3); }
+        .status-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        .st-pendiente { background: #332b00; color: #ffcc00; }
+        .st-confirmada { background: #003322; color: #00E08F; }
+        .st-cancelada { background: #330000; color: #FF2E2E; }
+
+        /* CLIENTES & CHAT STYLES */
+        .search-container { position: relative; margin-bottom: 20px; }
+        .search-icon { position: absolute; left: 15px; top: 15px; color: var(--gray); }
+        .search-input { padding-left: 45px; text-align: left; text-transform: none; letter-spacing: 0; }
+        .client-card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .c-avatar { width: 50px; height: 50px; background: #222; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--accent); font-size: 1.2rem; border: 1px solid #333; flex-shrink: 0; }
+        .c-info { flex: 1; margin-left: 15px; }
+        .c-name { font-weight: 600; font-size: 1.1rem; margin-bottom: 4px; }
+        .c-stats { display: flex; gap: 15px; font-size: 0.85rem; color: var(--gray); }
+        .c-tag { background: #222; padding: 5px 10px; border-radius: 8px; font-size: 0.8rem; color: #fff; border: 1px solid #333; white-space: nowrap; }
+
+        /* CHAT */
+        .chat-layout { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 180px); background: var(--card); border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+        .chat-list { border-right: 1px solid var(--border); overflow-y: auto; background: #111; height: 100%; }
+        .chat-item { padding: 18px 20px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; }
+        .chat-item:hover { background: #1a1a1a; }
+        .chat-item.active { background: #222; border-left: 3px solid var(--accent); }
+        .chat-info h4 { color: white; font-size: 1rem; margin-bottom: 4px; font-weight: 600; }
+        .chat-info p { color: #888; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; margin: 0; }
+        .unread-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+        .chat-view { display: flex; flex-direction: column; background: #050505; height: 100%; }
+        .cv-header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #111; display: flex; align-items: center; gap: 15px; z-index: 10; }
+        .cv-back-btn { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        .cv-body { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background-image: radial-gradient(#1a1a1a 1px, transparent 1px); background-size: 20px 20px; }
+        .cv-footer { padding: 15px; background: #111; display: flex; gap: 10px; border-top: 1px solid var(--border); align-items: center; }
+        .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; color: white; position: relative; word-wrap: break-word; }
+        .msg-bubble.admin { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 4px; }
+        .msg-bubble.cliente { align-self: flex-start; background: #222; border: 1px solid #333; border-bottom-left-radius: 4px; }
+
+        @media (max-width: 768px) {
+            #dashboard { padding: 15px; padding-bottom: 50px; }
+            .chat-layout { display: block; border: none; background: transparent; height: auto; border-radius: 0; }
+            .chat-list { border: none; background: transparent; height: auto; padding-bottom: 80px; }
+            .chat-item { background: var(--card); margin-bottom: 10px; border-radius: 12px; border: 1px solid var(--border); }
+            .chat-view { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 10000; background: #000; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); display: flex; }
+            .chat-view.active { transform: translateX(0); }
+            .cv-header { padding-top: max(15px, env(safe-area-inset-top)); background: #111; }
+            .cv-back-btn { display: block; }
+            .cv-footer { padding-bottom: max(15px, env(safe-area-inset-bottom)); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container"></div>
+    <audio id="notifySound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+    <div id="login-screen">
+        <div class="brand">GLOW<span>.</span> Admin</div>
+        <div class="login-box">
+            <p style="color:#888; margin-bottom:15px;">Ingresa tu Código de Negocio</p>
+            <input type="text" id="businessCodeInput" placeholder="EJ: MARIA88" maxlength="20">
+            <button class="btn-primary" onclick="admin.login()">Entrar al Portal</button>
+            <p id="loginError" style="color:var(--danger); margin-top:15px; display:none;">Código requerido</p>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <div class="header">
+            <div>
+                <h2 id="dashTitle">Portal Admin</h2>
+                <p style="color:var(--gray); font-size:0.9rem;" id="dashCodeDisplay">--</p>
+            </div>
+            <button class="logout" onclick="admin.logout()">Salir</button>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="admin.switchTab('calendar', this)">Calendario</button>
+            <button class="tab-btn" onclick="admin.switchTab('reservas', this)">Lista</button>
+            <button class="tab-btn" onclick="admin.switchTab('clientes', this)">Clientes</button>
+            <button class="tab-btn" onclick="admin.switchTab('mensajes', this)">Mensajes <span id="msgNotify" style="display:none; color:var(--accent)">•</span></button>
+        </div>
+
+        <div id="view-calendar" class="view-section active">
+            <div class="calendar-stats-container">
+                <div class="c-stat-box">
+                    <h3 id="cStatConfirmed" style="color:var(--success)">0</h3>
+                    <p>Confirmadas</p>
+                    <div class="progress-bg"><div class="progress-fill" id="progConfirmed" style="background:var(--success); width:0%"></div></div>
+                </div>
+                <div class="c-stat-box">
+                    <h3 id="cStatPending" style="color:#ffcc00">0</h3>
+                    <p>Pendientes</p>
+                    <div class="progress-bg"><div class="progress-fill" id="progPending" style="background:#ffcc00; width:0%"></div></div>
+                </div>
+            </div>
+
+            <div class="calendar-frame">
+                <div class="cal-header">
+                    <button class="cal-nav-btn" onclick="adminCalendar.changeMonth(-1)"><i class="ph ph-caret-left"></i></button>
+                    <h3 id="calMonthLabel">Enero 2024</h3>
+                    <button class="cal-nav-btn" onclick="adminCalendar.changeMonth(1)"><i class="ph ph-caret-right"></i></button>
+                </div>
+                <div class="cal-grid">
+                    <div class="cal-day-name">D</div><div class="cal-day-name">L</div>
+                    <div class="cal-day-name">M</div><div class="cal-day-name">M</div>
+                    <div class="cal-day-name">J</div><div class="cal-day-name">V</div>
+                    <div class="cal-day-name">S</div>
+                </div>
+                <div class="cal-grid" id="calDaysGrid"></div>
+            </div>
+        </div>
+
+        <div id="view-reservas" class="view-section">
+            <div class="filter-bar">
+                <div class="filter-chip active" onclick="admin.filter('todas', this)">Todas</div>
+                <div class="filter-chip" onclick="admin.filter('pendiente', this)">Pendientes</div>
+                <div class="filter-chip" onclick="admin.filter('confirmada', this)">Confirmadas</div>
+                <div class="filter-chip" onclick="admin.filter('cancelada', this)">Canceladas</div>
+            </div>
+            <div class="bookings-list" id="bookingsList"></div>
+        </div>
+
+        <div id="view-clientes" class="view-section">
+            <div class="search-container">
+                <i class="ph ph-magnifying-glass search-icon"></i>
+                <input type="text" class="search-input" placeholder="Buscar cliente por nombre..." onkeyup="admin.searchClients(this.value)">
+            </div>
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-num" id="statClientsTotal">0</div>
+                    <div class="stat-label">Clientes Únicos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="statVip" style="color: var(--accent)">0</div>
+                    <div class="stat-label">Clientes VIP</div>
+                </div>
+            </div>
+            <div id="clientsList"></div>
+        </div>
+
+        <div id="view-mensajes" class="view-section">
+            <div class="chat-layout">
+                <div class="chat-list" id="inboxList">
+                    <div style="padding:40px; text-align:center; color:#666;">Cargando chats...</div>
+                </div>
+                <div class="chat-view" id="adminChatView">
+                    <div class="cv-header">
+                        <button class="cv-back-btn" onclick="adminChat.closeMobile()"><i class="ph ph-arrow-left"></i></button>
+                        <div>
+                            <span id="chatActiveUser" style="font-size:1.1rem; display:block;">Selecciona un chat</span>
+                            <span style="font-size:0.8rem; color:#888;">En línea</span>
+                        </div>
+                    </div>
+                    <div class="cv-body" id="adminChatBody"></div>
+                    <div class="cv-footer">
+                        <input type="text" id="adminChatInput" placeholder="Escribe un mensaje..." style="margin-bottom:0; background:#222; border:none;">
+                        <button class="btn-primary" onclick="adminChat.send()" style="width: auto; padding: 12px 20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                            <i class="ph ph-paper-plane-right" style="font-size:1.2rem"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal-overlay" id="dateModal" onclick="if(event.target === this) adminCalendar.closeModal()">
+        <div class="modal-content">
+            <h2 class="modal-date" id="modalDateTitle">--</h2>
+            <p class="modal-subtitle" id="modalCountSubtitle">0 reservas programadas</p>
+            <div class="event-list" id="modalEventList"></div>
+            <button style="margin-top:20px; background:#222; color:white; padding:12px; width:100%; border-radius:12px; border:none; cursor:pointer;" onclick="adminCalendar.closeModal()">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN SUPABASE ---
+        const SUPABASE_URL = 'https://luwcggpjvsrhvdwjiarw.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1d2NnZ3BqdnNyaHZkd2ppYXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NjE4NTcsImV4cCI6MjA4MzIzNzg1N30.L_Yl3cVXdvLGcz3VZD-icJXAE4_myxqGo6o5dAkKw0M';
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- SISTEMA DE NOTIFICACIONES VISUALES ---
+        const notifications = {
+            show(title, message, type = 'info') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                
+                let icon = 'ph-bell';
+                if(type === 'reserva') icon = 'ph-calendar-plus';
+                if(type === 'mensaje') icon = 'ph-chat-circle-text';
+
+                toast.innerHTML = `
+                    <i class="ph ${icon} toast-icon"></i>
+                    <div class="toast-content">
+                        <h4>${title}</h4>
+                        <p>${message}</p>
+                    </div>
+                `;
+
+                container.appendChild(toast);
+                
+                const audio = document.getElementById('notifySound');
+                if(audio) { audio.currentTime = 0; audio.play().catch(e => console.log("Interacción requerida para audio")); }
+
+                requestAnimationFrame(() => toast.classList.add('active'));
+
+                setTimeout(() => {
+                    toast.classList.remove('active');
+                    setTimeout(() => toast.remove(), 400);
+                }, 5000);
+            }
+        };
+
+        // --- PUSH MANAGER (Web Push API) ---
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
+            return outputArray;
+        }
+
+        const pushManager = {
+            publicKey: "BOeOnCTvYQny03N0BjT1wMND1ZqjyKsT-Y5IV-xsJZcwG3WZ7DvvxZqHKlhNFFswTVOQ27hq6cq6kzmIwTq9wB8",
+
+            async init() {
+                if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+                try {
+                    // Nota: Debes tener el archivo sw.js en la raíz
+                    const registration = await navigator.serviceWorker.register('sw.js');
+                    this.subscribeUser(registration);
+                } catch (error) { console.error('Error SW:', error); }
+            },
+
+            async subscribeUser(registration) {
+                const subscribeOptions = {
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(this.publicKey)
+                };
+                try {
+                    const subscription = await registration.pushManager.subscribe(subscribeOptions);
+                    this.saveSubscriptionToSupabase(subscription);
+                } catch (error) {
+                    if (Notification.permission === 'denied') console.warn('Permiso notificaciones denegado');
+                    else console.error('Fallo suscripción push:', error);
+                }
+            },
+
+            async saveSubscriptionToSupabase(subscription) {
+                if (!admin.code) return;
+                await supabaseClient
+                    .from('admin_subscriptions')
+                    .upsert({ 
+                        codigo_negocio: admin.code,
+                        subscription: subscription 
+                    }, { onConflict: 'subscription' });
+            }
+        };
+
+        // --- ADMIN APP PRINCIPAL ---
+        const admin = {
+            code: null,
+            data: [], 
+            clientsData: [], 
+            currentFilter: 'todas',
+            realtimeSubscription: null,
+
+            init() {
+                const storedCode = localStorage.getItem('glowAdminCode');
+                if(storedCode) {
+                    document.getElementById('businessCodeInput').value = storedCode;
+                    this.login();
+                }
+            },
+
+            async login() {
+                const input = document.getElementById('businessCodeInput');
+                const val = input.value.trim().toUpperCase();
+                if(!val) { document.getElementById('loginError').style.display = 'block'; return; }
+
+                this.code = val;
+                localStorage.setItem('glowAdminCode', val);
+                document.getElementById('login-screen').style.opacity = '0';
+                
+                // INICIAR PUSH & NOTIFICACIONES
+                if(Notification.permission !== 'granted') Notification.requestPermission();
+                pushManager.init();
+
+                setTimeout(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'block';
+                    this.loadData();
+                }, 400);
+                document.getElementById('dashCodeDisplay').textContent = `Código: ${this.code}`;
+            },
+
+            logout() { localStorage.removeItem('glowAdminCode'); location.reload(); },
+
+            switchTab(tabName, btn) {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                if(btn) btn.classList.add('active');
+                document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+                document.getElementById(`view-${tabName}`).classList.add('active');
+            },
+
+            async loadData() {
+                const list = document.getElementById('bookingsList');
+                list.innerHTML = '<div style="text-align:center; padding:40px; color:#444;">Actualizando...</div>';
+
+                const { data, error } = await supabaseClient
+                    .from('reservas')
+                    .select('*')
+                    .eq('codigo_negocio', this.code)
+                    .order('created_at', { ascending: false });
+
+                if(error) { list.innerHTML = `<div style="color:red; text-align:center;">Error: ${error.message}</div>`; return; }
+
+                this.data = data;
+                this.renderList();
+                this.processClients();
+                
+                adminCalendar.init();
+                adminChat.init();
+
+                // SUSCRIPCIÓN EN TIEMPO REAL A RESERVAS
+                this.subscribeToReservations();
+            },
+
+            subscribeToReservations() {
+                if(this.realtimeSubscription) supabaseClient.removeChannel(this.realtimeSubscription);
+
+                this.realtimeSubscription = supabaseClient
+                    .channel('reservas_admin_channel')
+                    .on(
+                        'postgres_changes', 
+                        { 
+                            event: 'INSERT', 
+                            schema: 'public', 
+                            table: 'reservas', 
+                            filter: `codigo_negocio=eq.${this.code}` 
+                        }, 
+                        (payload) => {
+                            const newReserva = payload.new;
+                            
+                            // 1. Notificación Visual
+                            notifications.show(
+                                'Nueva Reserva', 
+                                `${newReserva.nombre} reservó para el ${newReserva.fecha}`, 
+                                'reserva'
+                            );
+
+                            // 2. Actualizar datos en caliente
+                            this.data.unshift(newReserva);
+                            this.renderList();
+                            this.processClients();
+                            adminCalendar.render();
+                            adminCalendar.updateStats();
+                        }
+                    )
+                    .subscribe();
+            },
+
+            // --- LISTA RESERVAS ---
+            filter(status, btnElement) {
+                this.currentFilter = status;
+                document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+                if(btnElement) btnElement.classList.add('active');
+                this.renderList();
+            },
+
+            renderList() {
+                const container = document.getElementById('bookingsList');
+                container.innerHTML = '';
+                const filtered = this.currentFilter === 'todas' ? this.data : this.data.filter(r => r.estado === this.currentFilter);
+                if(filtered.length === 0) { container.innerHTML = '<div style="text-align:center; padding:40px; color:#444;">No hay reservas con este estado.</div>'; return; }
+
+                filtered.forEach(res => {
+                    const dateObj = new Date(res.fecha + 'T00:00:00');
+                    const dateStr = dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+                    let statusClass = res.estado === 'confirmada' ? 'st-confirmada' : (res.estado === 'cancelada' ? 'st-cancelada' : 'st-pendiente');
+                    
+                    let actionsHtml = '';
+                    if(res.estado === 'pendiente') {
+                        actionsHtml = `<div class="b-actions"><button class="btn-action btn-reject" onclick="admin.updateStatus('${res.id}', 'cancelada')"><i class="ph ph-x"></i> Rechazar</button><button class="btn-action btn-approve" onclick="admin.updateStatus('${res.id}', 'confirmada')"><i class="ph ph-check"></i> Confirmar</button></div>`;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'booking-card';
+                    card.innerHTML = `<div class="b-header"><div><div class="b-name">${res.nombre} ${res.apellido}</div><div class="b-service">${res.servicio}</div></div><span class="status-badge ${statusClass}">${res.estado}</span></div><div class="b-details"><div class="b-detail-item"><i class="ph ph-calendar-blank"></i> ${dateStr}</div><div class="b-detail-item"><i class="ph ph-clock"></i> ${res.hora}</div></div>${actionsHtml}`;
+                    container.appendChild(card);
+                });
+            },
+
+            async updateStatus(id, newStatus) {
+                const index = this.data.findIndex(r => r.id === id);
+                if(index > -1) { 
+                    this.data[index].estado = newStatus; 
+                    this.renderList(); 
+                    this.processClients();
+                    adminCalendar.render(); 
+                }
+                await supabaseClient.from('reservas').update({ estado: newStatus }).eq('id', id);
+            },
+
+            // --- CLIENTES ---
+            processClients() {
+                const clientsMap = {};
+                this.data.forEach(r => {
+                    const key = `${r.nombre.trim().toLowerCase()}-${r.apellido.trim().toLowerCase()}`;
+                    if(!clientsMap[key]) { clientsMap[key] = { nombre: r.nombre, apellido: r.apellido, visitas: 0, servicios: {}, ultimaFecha: r.fecha }; }
+                    const client = clientsMap[key];
+                    client.visitas++;
+                    if(!client.servicios[r.servicio]) client.servicios[r.servicio] = 0;
+                    client.servicios[r.servicio]++;
+                    if(new Date(r.fecha) > new Date(client.ultimaFecha)) client.ultimaFecha = r.fecha;
+                });
+                this.clientsData = Object.values(clientsMap).map(c => {
+                    const favService = Object.keys(c.servicios).reduce((a, b) => c.servicios[a] > c.servicios[b] ? a : b);
+                    return { ...c, favService };
+                }).sort((a, b) => b.visitas - a.visitas);
+                document.getElementById('statClientsTotal').textContent = this.clientsData.length;
+                document.getElementById('statVip').textContent = this.clientsData.filter(c => c.visitas >= 3).length;
+                this.renderClients(this.clientsData);
+            },
+
+            renderClients(list) {
+                const container = document.getElementById('clientsList');
+                container.innerHTML = '';
+                if(list.length === 0) { container.innerHTML = '<div style="text-align:center; padding:40px; color:#444;">No hay clientes.</div>'; return; }
+                list.forEach(c => {
+                    const isVip = c.visitas >= 3 ? '<i class="ph ph-crown" style="color:gold; margin-left:5px;"></i>' : '';
+                    const card = document.createElement('div'); card.className = 'client-card';
+                    card.innerHTML = `<div class="c-avatar">${(c.nombre[0]+c.apellido[0]).toUpperCase()}</div><div class="c-info"><div class="c-name">${c.nombre} ${c.apellido} ${isVip}</div><div class="c-stats"><div class="c-stat-item"><i class="ph ph-calendar-check"></i> ${c.visitas} Visitas</div><div class="c-stat-item"><i class="ph ph-star"></i> ${c.favService}</div></div></div><div class="c-tag">Última: ${c.ultimaFecha}</div>`;
+                    container.appendChild(card);
+                });
+            },
+            searchClients(term) {
+                const clean = term.toLowerCase().trim();
+                this.renderClients(this.clientsData.filter(c => c.nombre.toLowerCase().includes(clean) || c.apellido.toLowerCase().includes(clean)));
+            }
+        };
+
+        // --- CALENDARIO LOGIC ---
+        const adminCalendar = {
+            date: new Date(),
+            monthNames: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+
+            init() { this.updateStats(); this.render(); },
+
+            updateStats() {
+                const confirmed = admin.data.filter(r => r.estado === 'confirmada').length;
+                const pending = admin.data.filter(r => r.estado === 'pendiente').length;
+                const total = confirmed + pending || 1;
+                document.getElementById('cStatConfirmed').textContent = confirmed;
+                document.getElementById('cStatPending').textContent = pending;
+                setTimeout(() => {
+                    document.getElementById('progConfirmed').style.width = `${(confirmed/total)*100}%`;
+                    document.getElementById('progPending').style.width = `${(pending/total)*100}%`;
+                }, 500);
+            },
+
+            render() {
+                const year = this.date.getFullYear(), month = this.date.getMonth();
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                document.getElementById('calMonthLabel').textContent = `${this.monthNames[month]} ${year}`;
+                const grid = document.getElementById('calDaysGrid');
+                grid.innerHTML = '';
+                for(let i=0; i<firstDay; i++) { grid.appendChild(document.createElement('div')).className = 'cal-day empty'; }
+                const today = new Date();
+                
+                for(let i=1; i<=daysInMonth; i++) {
+                    const currentDayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                    const el = document.createElement('div'); el.className = 'cal-day';
+                    el.innerHTML = `<span>${i}</span><div class="cal-dot"></div>`;
+                    if(year === today.getFullYear() && month === today.getMonth() && i === today.getDate()) el.classList.add('today');
+                    const dayBookings = admin.data.filter(r => r.fecha === currentDayStr && r.estado !== 'cancelada');
+                    if(dayBookings.length > 0) {
+                        el.classList.add('has-event');
+                        if(dayBookings.some(r => r.estado === 'pendiente')) el.classList.add('pending');
+                        el.onclick = () => this.openModal(i, this.monthNames[month], dayBookings);
+                    }
+                    grid.appendChild(el);
+                }
+            },
+            changeMonth(delta) { this.date.setMonth(this.date.getMonth() + delta); this.render(); },
+            openModal(day, month, bookings) {
+                const modal = document.getElementById('dateModal');
+                const list = document.getElementById('modalEventList');
+                document.getElementById('modalDateTitle').textContent = `${day} de ${month}`;
+                document.getElementById('modalCountSubtitle').textContent = `${bookings.length} reservas programadas`;
+                list.innerHTML = '';
+                bookings.sort((a,b) => a.hora.localeCompare(b.hora));
+                bookings.forEach(b => {
+                    const color = b.estado === 'pendiente' ? '#ffcc00' : '#00E08F';
+                    const div = document.createElement('div'); div.className = 'event-item';
+                    div.innerHTML = `<div class="event-time">${b.hora}</div><div class="event-details"><h4>${b.nombre} ${b.apellido}</h4><p>${b.servicio}</p></div><div class="event-status" style="background:${color}"></div>`;
+                    list.appendChild(div);
+                });
+                modal.classList.add('active');
+            },
+            closeModal() { document.getElementById('dateModal').classList.remove('active'); }
+        };
+
+        // --- LÓGICA CHAT ADMIN ---
+        const adminChat = {
+            activePhone: null, conversations: {},
+            init() { if(!admin.code) return; this.subscribeInbox(); this.loadConversations(); },
+            
+            async loadConversations() {
+                const { data } = await supabaseClient.from('mensajes').select('*').eq('codigo_negocio', admin.code).order('created_at', { ascending: false });
+                if(data) {
+                    this.conversations = {};
+                    data.forEach(m => {
+                        if(!this.conversations[m.telefono_cliente]) this.conversations[m.telefono_cliente] = { lastMsg: m.contenido, date: m.created_at, unread: !m.leido && m.emisor === 'cliente', messages: [] };
+                        this.conversations[m.telefono_cliente].messages.unshift(m);
+                    });
+                    this.renderInbox();
+                }
+            },
+
+            subscribeInbox() {
+                supabaseClient.channel('chat_admin').on('postgres_changes', 
+                { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `codigo_negocio=eq.${admin.code}` }, 
+                payload => {
+                    const msg = payload.new;
+                    if(msg.emisor === 'admin') return; // Ignorar propios
+                    
+                    if(!this.conversations[msg.telefono_cliente]) this.conversations[msg.telefono_cliente] = { messages: [] };
+                    const chat = this.conversations[msg.telefono_cliente];
+                    chat.lastMsg = msg.contenido; chat.date = msg.created_at; chat.messages.push(msg);
+                    
+                    if(msg.telefono_cliente !== this.activePhone) { 
+                        chat.unread = true; 
+                        document.getElementById('msgNotify').style.display = 'inline'; 
+                        // Notificación Visual
+                        notifications.show('Nuevo Mensaje', `De: ${msg.telefono_cliente}`, 'mensaje');
+                    } else { 
+                        this.renderBubble(msg); this.scrollToBottom(); 
+                    }
+                    this.renderInbox();
+                }).subscribe();
+            },
+
+            renderInbox() {
+                const list = document.getElementById('inboxList'); list.innerHTML = '';
+                const phones = Object.keys(this.conversations).sort((a,b) => new Date(this.conversations[b].date) - new Date(this.conversations[a].date));
+                if(phones.length === 0) { list.innerHTML = '<div style="padding:40px; text-align:center; color:#666;">No hay mensajes.</div>'; return; }
+                phones.forEach(phone => {
+                    const chat = this.conversations[phone];
+                    const clientName = admin.data.find(r => r.telefono === phone)?.nombre + ' ' + admin.data.find(r => r.telefono === phone)?.apellido || phone;
+                    const div = document.createElement('div'); div.className = `chat-item ${this.activePhone === phone ? 'active' : ''}`;
+                    div.innerHTML = `<div class="chat-info"><h4>${clientName}</h4><p>${chat.lastMsg}</p></div><div style="text-align:right"><div style="font-size:0.7rem; color:#666;">${new Date(chat.date).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>${chat.unread?'<div class="unread-dot"></div>':''}</div>`;
+                    div.onclick = () => this.openChat(phone);
+                    list.appendChild(div);
+                });
+            },
+            openChat(phone) {
+                this.activePhone = phone;
+                if(this.conversations[phone]) this.conversations[phone].unread = false;
+                this.renderInbox();
+                document.getElementById('adminChatView').classList.add('active');
+                document.getElementById('chatActiveUser').textContent = admin.data.find(r => r.telefono === phone)?.nombre || phone;
+                const body = document.getElementById('adminChatBody'); body.innerHTML = '';
+                if(this.conversations[phone]) this.conversations[phone].messages.forEach(m => this.renderBubble(m));
+                this.scrollToBottom();
+            },
+            closeMobile() { document.getElementById('adminChatView').classList.remove('active'); this.activePhone = null; setTimeout(()=>this.renderInbox(),300); },
+            renderBubble(msg) {
+                const div = document.createElement('div'); div.className = `msg-bubble ${msg.emisor}`; div.textContent = msg.contenido;
+                document.getElementById('adminChatBody').appendChild(div);
+            },
+            async send() {
+                if(!this.activePhone) return;
+                const input = document.getElementById('adminChatInput'); const text = input.value.trim(); if(!text) return;
+                input.value = '';
+                await supabaseClient.from('mensajes').insert([{ codigo_negocio: admin.code, telefono_cliente: this.activePhone, emisor: 'admin', contenido: text, leido: true }]);
+            },
+            scrollToBottom() { const body = document.getElementById('adminChatBody'); setTimeout(() => body.scrollTop = body.scrollHeight, 100); }
+        };
+
+        admin.init();
+    </script>
+</body>
+</html>
