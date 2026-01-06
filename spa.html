@@ -1,4 +1,3 @@
-﻿
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -11,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
         /* --- VARIABLES & RESET --- */
@@ -254,7 +255,7 @@
 
     <div id="app-frame">
         <header class="app-header">
-            <button class="btn-nav hidden" id="prevBtn" onclick="app.prevStep()">&lt;</button>
+            <button class="btn-nav hidden" id="prevBtn" onclick="app.prevStep()"><i class="ph ph-caret-left"></i></button>
             <div class="brand-small">GLOW<span>.</span></div>
             <div style="width: 40px;"></div>
         </header>
@@ -265,15 +266,15 @@
             
             <div class="step active" id="step-1">
                 <h1>Bienvenido</h1>
-                <p class="subtitle" id="step1Subtitle">Ingresa tu nero celular para comenzar.</p>
+                <p class="subtitle" id="step1Subtitle">Ingresa tu número celular para comenzar.</p>
                 
                 <div class="input-group">
-                    <input type="tel" id="inputPhone" placeholder="Tu Tel嶨ono" autocomplete="tel" oninput="app.checkPhoneInput(this)">
+                    <input type="tel" id="inputPhone" placeholder="Tu Teléfono" autocomplete="tel" oninput="app.checkPhoneInput(this)">
                     <div class="spinner" id="phoneSpinner"></div>
                 </div>
 
                 <div id="new-user-fields">
-                    <p style="color:var(--color-fuchsia); font-size:0.9rem; margin-bottom:15px;">?? Parece que es tu primera vez. ﹕eg疄trate abajo!</p>
+                    <p style="color:var(--color-fuchsia); font-size:0.9rem; margin-bottom:15px;">¡Parece que es tu primera vez. Regístrate abajo!</p>
                     <div class="input-group">
                         <input type="text" id="inputName" placeholder="Tu Nombre" autocomplete="given-name">
                     </div>
@@ -283,9 +284,9 @@
                 </div>
 
                 <div id="welcome-overlay">
-                    <div class="welcome-icon">?</div>
-                    <h2 style="font-family: var(--font-serif); font-size: 2rem; margin-bottom: 15px;">？ola de nuevo!</h2>
-                    <p id="welcome-text" style="font-size: 1.1rem; color: #555; line-height: 1.6;">Espero que est廥 bien.</p>
+                    <div class="welcome-icon">✨</div>
+                    <h2 style="font-family: var(--font-serif); font-size: 2rem; margin-bottom: 15px;">¡Hola de nuevo!</h2>
+                    <p id="welcome-text" style="font-size: 1.1rem; color: #555; line-height: 1.6;">Espero que estés bien.</p>
                 </div>
             </div>
 
@@ -313,12 +314,12 @@
 
             <div class="step" id="step-3">
                 <h1>Fecha</h1>
-                <p class="subtitle">Selecciona el d燰 perfecto.</p>
+                <p class="subtitle">Selecciona el día perfecto.</p>
                 <div class="calendar-wrapper">
                     <div class="calendar-header">
-                        <button class="btn-nav" onclick="calendar.changeMonth(-1)">&lt;</button>
+                        <button class="btn-nav" onclick="calendar.changeMonth(-1)"><i class="ph ph-caret-left"></i></button>
                         <span class="month-name" id="monthLabel">--</span>
-                        <button class="btn-nav" onclick="calendar.changeMonth(1)">&gt;</button>
+                        <button class="btn-nav" onclick="calendar.changeMonth(1)"><i class="ph ph-caret-right"></i></button>
                     </div>
                     <div class="days-grid" id="daysGrid"></div>
                 </div>
@@ -331,11 +332,11 @@
             </div>
 
             <div class="step" id="step-5">
-                <h1>Confirmaci鏮</h1>
+                <h1>Confirmación</h1>
                 <p class="subtitle">Verifica los detalles antes de finalizar.</p>
                 <div class="summary-box">
                     <div class="summary-row"><span>Cliente</span><span id="sumName" style="font-weight:600">--</span></div>
-                    <div class="summary-row"><span>Tel嶨ono</span><span id="sumPhone" style="font-weight:600">--</span></div>
+                    <div class="summary-row"><span>Teléfono</span><span id="sumPhone" style="font-weight:600">--</span></div>
                     <div class="summary-row"><span>Tratamiento</span><span id="sumService" style="font-weight:600">--</span></div>
                     <div class="summary-row"><span>Fecha</span><span id="sumDate" style="font-weight:600">--</span></div>
                     <div class="summary-row" style="border:none"><span>Hora</span><span id="sumTime" style="font-weight:600">--</span></div>
@@ -349,8 +350,8 @@
 
         <div class="modal-overlay" id="successModal">
             <div class="modal-card">
-                <div class="success-check">?</div>
-                <h2>。onfirmado!</h2>
+                <div class="success-check"><i class="ph ph-check"></i></div>
+                <h2>¡Confirmado!</h2>
                 <p style="color:#666; margin-bottom:30px">Tu experiencia ha sido reservada.</p>
                 <button class="btn-styled btn-fuchsia-glow" onclick="location.reload()">Finalizar</button>
             </div>
@@ -365,21 +366,21 @@
     <div id="chat-drawer">
         <header class="chat-header">
             <h2 style="font-family: var(--font-serif); font-size: 1.5rem;">Soporte</h2>
-            <button class="btn-nav" onclick="chatApp.toggle()" style="border:none;">?</button>
+            <button class="btn-nav" onclick="chatApp.toggle()" style="border:none;"><i class="ph ph-x"></i></button>
         </header>
         <div class="chat-body" id="chatContainer">
             <div style="text-align:center; color:#999; font-size:0.9rem; margin-top:20px;">
-                Inicia una conversaci鏮 con nosotros.
+                Inicia una conversación con nosotros.
             </div>
         </div>
         <div class="chat-footer">
             <input type="text" class="chat-input" id="chatInput" placeholder="Escribe un mensaje..." onkeypress="chatApp.handleEnter(event)">
-            <button class="send-btn" onclick="chatApp.send()"><span style="font-size:1.2rem">?</span></button>
+            <button class="send-btn" onclick="chatApp.send()"><i class="ph ph-paper-plane-right" style="font-size:1.2rem"></i></button>
         </div>
     </div>
 
     <script>
-        // CONFIGURACI粍 SUPABASE
+        // CONFIGURACIÓN SUPABASE
         const SUPABASE_URL = 'https://luwcggpjvsrhvdwjiarw.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1d2NnZ3BqdnNyaHZkd2ppYXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NjE4NTcsImV4cCI6MjA4MzIzNzg1N30.L_Yl3cVXdvLGcz3VZD-icJXAE4_myxqGo6o5dAkKw0M';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -441,18 +442,18 @@
                 this.generateTimeSlots(); 
                 chatApp.init(); 
 
-                // --- NUEVA L笉ICA DE PERSISTENCIA ---
+                // --- NUEVA LÓGICA DE PERSISTENCIA ---
                 const cachedPhone = localStorage.getItem(STORAGE_KEY);
                 if(cachedPhone) {
-                    console.log("Sesi鏮 recuperada:", cachedPhone);
+                    console.log("Sesión recuperada:", cachedPhone);
                     // Llenamos el input visualmente por si acaso
                     document.getElementById('inputPhone').value = cachedPhone;
-                    // Forzamos la verificaci鏮 inmediata
+                    // Forzamos la verificación inmediata
                     this.verifyUser(cachedPhone);
                 }
             },
 
-            // LOGICA AUTOM糞ICA DEL TEL丌ONO
+            // LOGICA AUTOMÁTICA DEL TELÉFONO
             checkPhoneInput(input) {
                 input.value = input.value.replace(/[^0-9]/g, '');
                 if(input.value.length <11 ) {
@@ -492,7 +493,7 @@
                     chatApp.enable();
 
                     const welcomeMsg = document.getElementById('welcome-overlay');
-                    document.getElementById('welcome-text').innerHTML = `Hola, espero que est廥 bien.<br>Bienvenida de nuevo, <b>${user.nombre} ${user.apellido}</b>`;
+                    document.getElementById('welcome-text').innerHTML = `Hola, espero que estés bien.<br>Bienvenida de nuevo, <b>${user.nombre} ${user.apellido}</b>`;
                     welcomeMsg.style.display = 'flex'; 
 
                     document.getElementById('actionBar').style.display = 'none';
@@ -513,10 +514,10 @@
                 }
             },
 
-            // --- NUEVA FUNCI粍 PARA BORRAR CACHE (LOGOUT) ---
+            // --- NUEVA FUNCIÓN PARA BORRAR CACHE (LOGOUT) ---
             logout() {
                 localStorage.removeItem(STORAGE_KEY); // Borra el dato
-                location.reload(); // Recarga la p墔ina para volver al inicio
+                location.reload(); // Recarga la página para volver al inicio
             },
 
             nextStep() {
@@ -736,5 +737,4 @@
         };
     </script>
 </body>
-
 </html>
