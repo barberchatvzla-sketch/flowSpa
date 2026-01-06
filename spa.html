@@ -1,0 +1,740 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Luxe Spa Experience</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* --- VARIABLES & RESET --- */
+        :root {
+            --color-black: #050505;
+            --color-white: #ffffff;
+            --color-fuchsia: #E000E0;
+            --color-fuchsia-glow: rgba(224, 0, 224, 0.5);
+            --color-gray-bg: #F8F9FA;
+            --font-serif: 'Playfair Display', serif;
+            --font-sans: 'Manrope', sans-serif;
+            --radius-app: 32px;
+            --radius-card: 20px;
+            --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: #000;
+            font-family: var(--font-sans);
+            height: 100vh; height: 100dvh; 
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+        }
+
+        /* --- LOADING & COVER --- */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10000; opacity: 1; transition: opacity 0.8s, visibility 0.8s; pointer-events: none;
+        }
+        #loading-screen.fade-out { opacity: 0; visibility: hidden; }
+        .loading-logo {
+            font-family: var(--font-serif); font-size: 4.5rem; font-weight: 700; line-height: 1;
+            margin-bottom: 40px; letter-spacing: -1px; color: var(--color-white);
+        }
+        .loading-logo span { color: var(--color-fuchsia); }
+
+        #cover-page {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background-image: url('https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=2500&auto=format&fit=crop');
+            background-size: cover; background-position: center; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            transition: opacity 0.8s, visibility 0.8s; opacity: 0; visibility: hidden;
+        }
+        body.resources-loaded #cover-page { opacity: 1; visibility: visible; }
+        body.app-active #cover-page { opacity: 0; visibility: hidden; pointer-events: none; }
+        .cover-gradient-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 60%;
+            background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%); z-index: 1;
+        }
+        .cover-content { position: relative; z-index: 2; margin-bottom: 60px; padding: 0 40px; text-align: center; color: white; }
+        .brand-large { font-family: var(--font-serif); font-size: 5rem; margin-bottom: 10px; }
+        .brand-large span { color: var(--color-fuchsia); }
+        .cover-subtitle { font-size: 1.1rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 50px; opacity: 0.9; }
+
+        /* --- APP FRAME --- */
+        #app-frame {
+            width: 100%; max-width: 414px; height: 100%; max-height: 100dvh; 
+            background: var(--color-white); position: relative; display: flex; flex-direction: column; 
+            overflow: hidden; opacity: 0; transform: scale(0.94);
+            transition: opacity 0.8s 0.2s, transform 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        body.app-active #app-frame { opacity: 1; transform: scale(1); }
+        @media (min-width: 450px) {
+            #app-frame { height: 92vh; max-height: 896px; border-radius: var(--radius-app); box-shadow: var(--shadow-soft); }
+            body { background-image: linear-gradient(135deg, #111 0%, #333 100%); }
+        }
+
+        /* --- HEADER & NAV --- */
+        .app-header {
+            padding: 25px; display: flex; justify-content: space-between; align-items: center;
+            padding-top: max(25px, env(safe-area-inset-top)); 
+        }
+        .brand-small { font-family: var(--font-serif); font-size: 1.4rem; font-weight: 700; }
+        .brand-small span { color: var(--color-fuchsia); }
+        .btn-nav {
+            background: transparent; border: 1px solid #EAEAEA; width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-nav:hover { background: var(--color-black); color: white; }
+        .btn-nav.hidden { opacity: 0; pointer-events: none; }
+        .progress-container { width: 100%; height: 2px; background: #f0f0f0; }
+        .progress-bar { height: 100%; background: var(--color-fuchsia); width: 0%; transition: width 0.6s; }
+
+        /* --- CONTENT --- */
+        .content-area { flex: 1; overflow-y: auto; padding: 25px; position: relative; }
+        .step { display: none; flex-direction: column; min-height: 100%; }
+        .step.active { display: flex; animation: fadeInSlideUp 0.6s forwards; }
+        @keyframes fadeInSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        h1 { font-family: var(--font-serif); font-size: 2rem; margin-bottom: 10px; }
+        p.subtitle { color: #888; margin-bottom: 35px; font-weight: 300; font-size: 0.95rem; }
+
+        /* --- INPUTS & ANIMATIONS --- */
+        .input-group { position: relative; margin-bottom: 25px; transition: all 0.5s ease; }
+        input[type="text"], input[type="tel"] {
+            width: 100%; padding: 15px 0; font-family: var(--font-serif); font-size: 1.4rem;
+            border: none; border-bottom: 1px solid #ddd; background: transparent; outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-bottom-color: var(--color-fuchsia); }
+        input::placeholder { color: #ccc; font-family: var(--font-sans); font-size: 1.1rem; }
+        
+        .spinner {
+            width: 20px; height: 20px; border: 2px solid #ddd; border-top-color: var(--color-fuchsia);
+            border-radius: 50%; animation: spin 0.8s linear infinite; display: none; position: absolute; right: 0; top: 15px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #new-user-fields {
+            display: none; opacity: 0; transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        #new-user-fields.visible { display: block; opacity: 1; transform: translateY(0); }
+
+        #welcome-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 50; display: none; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center; padding: 30px;
+            animation: fadeIn 0.5s ease;
+        }
+        .welcome-icon { font-size: 3rem; margin-bottom: 20px; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
+
+        /* --- CARDS & GRID --- */
+        .services-grid { display: grid; gap: 20px; }
+        .service-card {
+            background: white; border-radius: var(--radius-card); overflow: hidden; position: relative; height: 160px;
+            cursor: pointer; box-shadow: var(--shadow-soft); transition: transform 0.4s;
+        }
+        .service-card img { width: 100%; height: 100%; object-fit: cover; }
+        .service-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            padding: 20px; color: white;
+        }
+        .service-card.selected { border: 2px solid var(--color-fuchsia); }
+
+        /* --- CALENDAR & TIME --- */
+        .calendar-wrapper { background: white; border-radius: var(--radius-card); padding: 15px; box-shadow: var(--shadow-soft); }
+        .calendar-header { display: flex; justify-content: space-between; padding-bottom: 20px; }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin-top: 10px; }
+        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; margin: 2px; }
+        .day.selected { background: var(--color-black); color: white; }
+        .day.today { color: var(--color-fuchsia); font-weight: bold; }
+        
+        .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .time-slot { padding: 15px; border: 1px solid #eee; border-radius: 12px; text-align: center; cursor: pointer; }
+        .time-slot.selected { background: var(--color-fuchsia); color: white; border-color: var(--color-fuchsia); }
+
+        /* --- SUMMARY & ACTIONS --- */
+        .summary-box { background: var(--color-gray-bg); border-radius: var(--radius-card); padding: 30px; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 15px; }
+        
+        .action-bar { 
+            padding: 20px 25px; padding-bottom: max(40px, env(safe-area-inset-bottom)); 
+            background: linear-gradient(to top, white 85%, transparent); z-index: 10;
+        }
+        .btn-styled {
+            width: 100%; padding: 20px; border-radius: 50px; font-size: 1rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 1px; cursor: pointer; border: none;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        .btn-fuchsia-glow { background: var(--color-fuchsia); color: white; box-shadow: 0 10px 40px var(--color-fuchsia-glow); }
+        .btn-black { background: var(--color-black); color: white; }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(15px); z-index: 100; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .modal-card { text-align: center; padding: 40px; background: white; border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+        .success-check { width: 80px; height: 80px; background: var(--color-black); color: var(--color-fuchsia); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 25px auto; }
+
+        /* --- CHAT CLIENTE STYLES --- */
+        #chat-fab {
+            position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px;
+            border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); cursor: pointer;
+            z-index: 500; display: none; overflow: hidden; border: 3px solid white;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: #000;
+        }
+        #chat-fab:hover { transform: scale(1.1); }
+        #chat-fab img { width: 100%; height: 100%; object-fit: cover; }
+        #chat-fab .badge {
+            position: absolute; top: 0; right: 0; background: var(--color-fuchsia); width: 15px; height: 15px;
+            border-radius: 50%; border: 2px solid white; display: none;
+        }
+
+        /* Panel Deslizante iOS */
+        #chat-drawer {
+            position: fixed; top: 0; right: 0; width: 100%; height: 100%; max-width: 450px;
+            background: #fff; z-index: 10000; transform: translateX(100%);
+            transition: transform 0.5s cubic-bezier(0.32, 1, 0.23, 1); /* Curva iOS */
+            display: flex; flex-direction: column; box-shadow: -10px 0 40px rgba(0,0,0,0.1);
+        }
+        #chat-drawer.open { transform: translateX(0); }
+
+        .chat-header {
+            padding: 20px; background: white; border-bottom: 1px solid #f0f0f0;
+            display: flex; align-items: center; justify-content: space-between;
+            padding-top: max(20px, env(safe-area-inset-top));
+        }
+        .chat-body {
+            flex: 1; padding: 20px; overflow-y: auto; background: var(--color-gray-bg);
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .chat-footer {
+            padding: 15px; background: white; border-top: 1px solid #f0f0f0; display: flex; gap: 10px;
+            padding-bottom: max(15px, env(safe-area-inset-bottom));
+        }
+
+        /* Burbujas de Chat */
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; position: relative; animation: fadeIn 0.3s ease; }
+        .msg.me { align-self: flex-end; background: var(--color-black); color: white; border-bottom-right-radius: 4px; }
+        .msg.admin { align-self: flex-start; background: white; color: black; border: 1px solid #eee; border-bottom-left-radius: 4px; }
+        .chat-input { flex: 1; padding: 12px 20px; border-radius: 30px; border: 1px solid #ddd; background: #f9f9f9; outline: none; font-size: 1rem; }
+        .send-btn { width: 45px; height: 45px; background: var(--color-fuchsia); border-radius: 50%; border: none; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="loading-logo">GLOW<span>.</span></div>
+    </div>
+
+    <div id="cover-page">
+        <div class="cover-gradient-overlay"></div>
+        <div class="cover-content">
+            <h1 class="brand-large">GLOW<span>.</span></h1>
+            <p class="cover-subtitle">Experiencias de Lujo & Bienestar</p>
+            <button class="btn-styled" style="background: white; color: black;" onclick="enterApp()">Reservar Ahora</button>
+        </div>
+    </div>
+
+    <div id="app-frame">
+        <header class="app-header">
+            <button class="btn-nav hidden" id="prevBtn" onclick="app.prevStep()">&lt;</button>
+            <div class="brand-small">GLOW<span>.</span></div>
+            <div style="width: 40px;"></div>
+        </header>
+
+        <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+
+        <main class="content-area">
+            
+            <div class="step active" id="step-1">
+                <h1>Bienvenido</h1>
+                <p class="subtitle" id="step1Subtitle">Ingresa tu nero celular para comenzar.</p>
+                
+                <div class="input-group">
+                    <input type="tel" id="inputPhone" placeholder="Tu Tel嶨ono" autocomplete="tel" oninput="app.checkPhoneInput(this)">
+                    <div class="spinner" id="phoneSpinner"></div>
+                </div>
+
+                <div id="new-user-fields">
+                    <p style="color:var(--color-fuchsia); font-size:0.9rem; margin-bottom:15px;">?? Parece que es tu primera vez. ﹕eg疄trate abajo!</p>
+                    <div class="input-group">
+                        <input type="text" id="inputName" placeholder="Tu Nombre" autocomplete="given-name">
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="inputSurname" placeholder="Tu Apellido" autocomplete="family-name">
+                    </div>
+                </div>
+
+                <div id="welcome-overlay">
+                    <div class="welcome-icon">?</div>
+                    <h2 style="font-family: var(--font-serif); font-size: 2rem; margin-bottom: 15px;">？ola de nuevo!</h2>
+                    <p id="welcome-text" style="font-size: 1.1rem; color: #555; line-height: 1.6;">Espero que est廥 bien.</p>
+                </div>
+            </div>
+
+            <div class="step" id="step-2">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h1 id="serviceHeader" style="margin-bottom:0;">Servicios</h1>
+                    <button onclick="app.logout()" style="border:none; background:transparent; font-size:0.85rem; color:#999; text-decoration:underline; cursor:pointer;">Cambiar</button>
+                </div>
+                <p class="subtitle">Selecciona tu tratamiento exclusivo.</p>
+                <div class="services-grid">
+                    <div class="service-card" onclick="app.selectService(this, 'Royal Cut & Style')">
+                        <img src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?q=80&w=800&auto=format&fit=crop">
+                        <div class="service-overlay"><span class="service-name">Royal Cut</span></div>
+                    </div>
+                    <div class="service-card" onclick="app.selectService(this, 'Color Therapy')">
+                        <img src="https://images.unsplash.com/photo-1620331317312-74b88bf40907?q=80&w=800&auto=format&fit=crop">
+                        <div class="service-overlay"><span class="service-name">Color Therapy</span></div>
+                    </div>
+                    <div class="service-card" onclick="app.selectService(this, 'Signature Spa')">
+                        <img src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=800&auto=format&fit=crop">
+                        <div class="service-overlay"><span class="service-name">Signature Spa</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step" id="step-3">
+                <h1>Fecha</h1>
+                <p class="subtitle">Selecciona el d燰 perfecto.</p>
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <button class="btn-nav" onclick="calendar.changeMonth(-1)">&lt;</button>
+                        <span class="month-name" id="monthLabel">--</span>
+                        <button class="btn-nav" onclick="calendar.changeMonth(1)">&gt;</button>
+                    </div>
+                    <div class="days-grid" id="daysGrid"></div>
+                </div>
+            </div>
+
+            <div class="step" id="step-4">
+                <h1>Horario</h1>
+                <p class="subtitle">Disponibilidad para la fecha seleccionada.</p>
+                <div class="time-grid" id="timeGrid"></div>
+            </div>
+
+            <div class="step" id="step-5">
+                <h1>Confirmaci鏮</h1>
+                <p class="subtitle">Verifica los detalles antes de finalizar.</p>
+                <div class="summary-box">
+                    <div class="summary-row"><span>Cliente</span><span id="sumName" style="font-weight:600">--</span></div>
+                    <div class="summary-row"><span>Tel嶨ono</span><span id="sumPhone" style="font-weight:600">--</span></div>
+                    <div class="summary-row"><span>Tratamiento</span><span id="sumService" style="font-weight:600">--</span></div>
+                    <div class="summary-row"><span>Fecha</span><span id="sumDate" style="font-weight:600">--</span></div>
+                    <div class="summary-row" style="border:none"><span>Hora</span><span id="sumTime" style="font-weight:600">--</span></div>
+                </div>
+            </div>
+        </main>
+
+        <div class="action-bar" id="actionBar" style="display:none;">
+            <button class="btn-styled btn-black" id="mainBtn" onclick="app.nextStep()">Continuar</button>
+        </div>
+
+        <div class="modal-overlay" id="successModal">
+            <div class="modal-card">
+                <div class="success-check">?</div>
+                <h2>。onfirmado!</h2>
+                <p style="color:#666; margin-bottom:30px">Tu experiencia ha sido reservada.</p>
+                <button class="btn-styled btn-fuchsia-glow" onclick="location.reload()">Finalizar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-fab" onclick="chatApp.toggle()">
+        <img id="chatLogoImg" src="" alt="Chat">
+        <div class="badge" id="chatBadge"></div>
+    </div>
+
+    <div id="chat-drawer">
+        <header class="chat-header">
+            <h2 style="font-family: var(--font-serif); font-size: 1.5rem;">Soporte</h2>
+            <button class="btn-nav" onclick="chatApp.toggle()" style="border:none;">?</button>
+        </header>
+        <div class="chat-body" id="chatContainer">
+            <div style="text-align:center; color:#999; font-size:0.9rem; margin-top:20px;">
+                Inicia una conversaci鏮 con nosotros.
+            </div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Escribe un mensaje..." onkeypress="chatApp.handleEnter(event)">
+            <button class="send-btn" onclick="chatApp.send()"><span style="font-size:1.2rem">?</span></button>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACI粍 SUPABASE
+        const SUPABASE_URL = 'https://luwcggpjvsrhvdwjiarw.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1d2NnZ3BqdnNyaHZkd2ppYXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NjE4NTcsImV4cCI6MjA4MzIzNzg1N30.L_Yl3cVXdvLGcz3VZD-icJXAE4_myxqGo6o5dAkKw0M';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const BUSINESS_CODE = urlParams.get('ref') || 'DEMO';
+        
+        // CLAVE PARA LOCALSTORAGE
+        const STORAGE_KEY = 'glow_spa_phone_cache';
+
+        // --- CARGA DE RECURSOS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.getElementById('loading-screen').classList.add('fade-out');
+                document.body.classList.add('resources-loaded');
+            }, 1000);
+            app.init();
+        });
+
+        function enterApp() { document.body.classList.add('app-active'); }
+
+        // --- CALENDARIO LOGIC ---
+        const calendar = {
+            date: new Date(), selected: null,
+            monthNames: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+            init() { this.render(); },
+            render() {
+                const year = this.date.getFullYear(), month = this.date.getMonth();
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                document.getElementById('monthLabel').textContent = `${this.monthNames[month]} ${year}`;
+                const grid = document.getElementById('daysGrid');
+                grid.innerHTML = '';
+                for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
+                const today = new Date(); today.setHours(0,0,0,0);
+                for(let i=1; i<=daysInMonth; i++) {
+                    const el = document.createElement('div'), currentDay = new Date(year, month, i);
+                    el.className = 'day'; el.textContent = i;
+                    if(currentDay < today) { el.style.opacity = '0.3'; el.style.pointerEvents = 'none'; }
+                    el.onclick = () => {
+                        document.querySelectorAll('.day').forEach(d => d.classList.remove('selected'));
+                        el.classList.add('selected'); this.selected = currentDay;
+                        setTimeout(() => app.nextStep(), 300);
+                    };
+                    grid.appendChild(el);
+                }
+            },
+            changeMonth(d) { this.date.setMonth(this.date.getMonth() + d); this.render(); }
+        };
+
+        // --- APP LOGIC PRINCIPAL ---
+        const app = {
+            step: 1, total: 5,
+            data: { phone: '', name: '', surname: '', service: '', date: null, time: '' },
+            checkTimer: null,
+
+            init() { 
+                calendar.init(); 
+                this.generateTimeSlots(); 
+                chatApp.init(); 
+
+                // --- NUEVA L笉ICA DE PERSISTENCIA ---
+                const cachedPhone = localStorage.getItem(STORAGE_KEY);
+                if(cachedPhone) {
+                    console.log("Sesi鏮 recuperada:", cachedPhone);
+                    // Llenamos el input visualmente por si acaso
+                    document.getElementById('inputPhone').value = cachedPhone;
+                    // Forzamos la verificaci鏮 inmediata
+                    this.verifyUser(cachedPhone);
+                }
+            },
+
+            // LOGICA AUTOM糞ICA DEL TEL丌ONO
+            checkPhoneInput(input) {
+                input.value = input.value.replace(/[^0-9]/g, '');
+                if(input.value.length <11 ) {
+                    document.getElementById('new-user-fields').classList.remove('visible');
+                    document.getElementById('actionBar').style.display = 'none';
+                    return;
+                }
+                clearTimeout(this.checkTimer);
+                this.checkTimer = setTimeout(() => {
+                    this.verifyUser(input.value);
+                }, 800);
+            },
+
+            async verifyUser(phone) {
+                const spinner = document.getElementById('phoneSpinner');
+                spinner.style.display = 'block';
+
+                const { data, error } = await supabaseClient
+                    .from('reservas')
+                    .select('nombre, apellido')
+                    .eq('telefono', phone)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                spinner.style.display = 'none';
+
+                // --- GUARDAR EN CACHE PERSISTENTE ---
+                localStorage.setItem(STORAGE_KEY, phone);
+                this.data.phone = phone;
+
+                if(data && data.length > 0) {
+                    // --- USUARIO ENCONTRADO ---
+                    const user = data[0];
+                    this.data.name = user.nombre;
+                    this.data.surname = user.apellido;
+                    
+                    chatApp.enable();
+
+                    const welcomeMsg = document.getElementById('welcome-overlay');
+                    document.getElementById('welcome-text').innerHTML = `Hola, espero que est廥 bien.<br>Bienvenida de nuevo, <b>${user.nombre} ${user.apellido}</b>`;
+                    welcomeMsg.style.display = 'flex'; 
+
+                    document.getElementById('actionBar').style.display = 'none';
+
+                    setTimeout(() => {
+                        welcomeMsg.style.display = 'none';
+                        this.step = 2; // Salta al paso 2
+                        this.updateUI();
+                    }, 2500);
+
+                } else {
+                    // --- USUARIO NUEVO ---
+                    document.getElementById('new-user-fields').classList.add('visible');
+                    document.getElementById('actionBar').style.display = 'block'; 
+                    document.getElementById('inputName').focus();
+                    
+                    chatApp.enable();
+                }
+            },
+
+            // --- NUEVA FUNCI粍 PARA BORRAR CACHE (LOGOUT) ---
+            logout() {
+                localStorage.removeItem(STORAGE_KEY); // Borra el dato
+                location.reload(); // Recarga la p墔ina para volver al inicio
+            },
+
+            nextStep() {
+                if(!this.validate()) return;
+                if(this.step === this.total) { this.submit(); return; }
+                this.step++; this.updateUI();
+            },
+            
+            prevStep() { 
+                if(this.step > 1) { this.step--; this.updateUI(); } 
+            },
+
+            validate() {
+                if(this.step === 1) {
+                    this.data.phone = document.getElementById('inputPhone').value.trim();
+                    const nameField = document.getElementById('inputName');
+                    if(nameField.offsetParent !== null) { 
+                        this.data.name = nameField.value.trim();
+                        this.data.surname = document.getElementById('inputSurname').value.trim();
+                        this.data.name = this.capitalize(this.data.name);
+                        this.data.surname = this.capitalize(this.data.surname);
+                        if(!this.data.name || !this.data.surname) { this.shakeBtn(); return false; }
+                    }
+                    if(!this.data.phone) { this.shakeBtn(); return false; }
+                }
+                if(this.step === 2 && !this.data.service) { this.shakeBtn(); return false; }
+                if(this.step === 3 && !calendar.selected) { this.shakeBtn(); return false; }
+                if(this.step === 4 && !this.data.time) { this.shakeBtn(); return false; }
+                if(this.step === 3) this.data.date = calendar.selected;
+                return true;
+            },
+
+            capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase(); },
+
+            selectService(el, name) {
+                document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
+                el.classList.add('selected'); this.data.service = name;
+                setTimeout(() => this.nextStep(), 400);
+            },
+
+            generateTimeSlots() {
+                const container = document.getElementById('timeGrid');
+                const times = ["09:00", "10:00", "11:00", "13:00", "15:00", "16:30", "18:00", "19:30"];
+                times.forEach(t => {
+                    const d = document.createElement('div'); d.className = 'time-slot'; d.textContent = t;
+                    d.onclick = () => {
+                        document.querySelectorAll('.time-slot').forEach(x => x.classList.remove('selected'));
+                        d.classList.add('selected'); this.data.time = t;
+                        setTimeout(() => this.nextStep(), 300);
+                    };
+                    container.appendChild(d);
+                });
+            },
+
+            updateUI() {
+                document.getElementById('progressBar').style.width = ((this.step - 1) / (this.total - 1)) * 100 + '%';
+                document.querySelectorAll('.step').forEach((el, idx) => {
+                    el.classList.toggle('active', idx + 1 === this.step);
+                });
+                document.getElementById('prevBtn').classList.toggle('hidden', this.step === 1);
+                const bar = document.getElementById('actionBar');
+                const btn = document.getElementById('mainBtn');
+
+                if(this.step === 1) {
+                    if(!document.getElementById('new-user-fields').classList.contains('visible')){
+                        bar.style.display = 'none';
+                    }
+                } else if([2,3,4].includes(this.step)) {
+                    bar.style.display = 'none'; 
+                } else {
+                    bar.style.display = 'block'; 
+                }
+
+                if(this.step === 2) {
+                    document.getElementById('serviceHeader').textContent = `Hola, ${this.data.name}`;
+                }
+
+                if(this.step === 5) {
+                    btn.textContent = 'Confirmar Reserva';
+                    btn.className = 'btn-styled btn-fuchsia-glow';
+                    document.getElementById('sumName').textContent = `${this.data.name} ${this.data.surname}`;
+                    document.getElementById('sumPhone').textContent = this.data.phone;
+                    document.getElementById('sumService').textContent = this.data.service;
+                    document.getElementById('sumDate').textContent = this.data.date.toLocaleDateString('es-ES');
+                    document.getElementById('sumTime').textContent = this.data.time;
+                } else {
+                    btn.textContent = 'Continuar';
+                    btn.className = 'btn-styled btn-black';
+                }
+            },
+
+            async submit() {
+                const btn = document.getElementById('mainBtn');
+                btn.innerHTML = 'Enviando...'; btn.disabled = true;
+                try {
+                    const { error } = await supabaseClient.from('reservas').insert([{
+                        codigo_negocio: BUSINESS_CODE,
+                        nombre: this.data.name,
+                        apellido: this.data.surname,
+                        telefono: this.data.phone,
+                        servicio: this.data.service,
+                        fecha: this.data.date.toISOString().split('T')[0],
+                        hora: this.data.time,
+                        estado: 'pendiente'
+                    }]);
+                    if(error) throw error;
+                    document.getElementById('successModal').classList.add('active');
+                } catch(err) {
+                    console.error(err);
+                    alert("Error al guardar.");
+                    btn.innerHTML = 'Reintentar'; btn.disabled = false;
+                }
+            },
+
+            shakeBtn() {
+                const btn = document.getElementById('mainBtn');
+                btn.style.transform = 'translateX(10px)';
+                setTimeout(() => btn.style.transform = 'translateX(0)', 200);
+            }
+        };
+
+        /* --- LOGICA DEL CHAT (Cliente) --- */
+        const chatApp = {
+            isOpen: false,
+            subscription: null,
+            
+            init() {
+                this.loadLogo();
+            },
+
+            async loadLogo() {
+                const { data } = await supabaseClient.from('negocios_config').select('chat_logo_url').eq('codigo', BUSINESS_CODE).single();
+                if(data && data.chat_logo_url) {
+                    document.getElementById('chatLogoImg').src = data.chat_logo_url;
+                } else {
+                    document.getElementById('chatLogoImg').src = "https://ui-avatars.com/api/?name=Glow+Spa&background=000&color=fff";
+                }
+            },
+
+            enable() {
+                document.getElementById('chat-fab').style.display = 'block';
+                this.subscribe();
+                this.loadMessages();
+            },
+
+            toggle() {
+                this.isOpen = !this.isOpen;
+                document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
+                if(this.isOpen) {
+                    document.getElementById('chatBadge').style.display = 'none';
+                    this.scrollToBottom();
+                }
+            },
+
+            async loadMessages() {
+                if(!app.data.phone) return;
+                const { data, error } = await supabaseClient
+                    .from('mensajes')
+                    .select('*')
+                    .eq('codigo_negocio', BUSINESS_CODE)
+                    .eq('telefono_cliente', app.data.phone)
+                    .order('created_at', { ascending: true });
+
+                if(data) {
+                    const container = document.getElementById('chatContainer');
+                    container.innerHTML = '';
+                    data.forEach(msg => this.renderMessage(msg));
+                    this.scrollToBottom();
+                }
+            },
+
+            subscribe() {
+                if(this.subscription) return;
+                this.subscription = supabaseClient
+                    .channel('chat_cliente')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `telefono_cliente=eq.${app.data.phone}` }, 
+                    payload => {
+                        this.renderMessage(payload.new);
+                        if(!this.isOpen && payload.new.emisor === 'admin') {
+                            document.getElementById('chatBadge').style.display = 'block';
+                        } else {
+                            this.scrollToBottom();
+                        }
+                    })
+                    .subscribe();
+            },
+
+            async send() {
+                const input = document.getElementById('chatInput');
+                const text = input.value.trim();
+                if(!text) return;
+
+                input.value = '';
+                
+                await supabaseClient.from('mensajes').insert([{
+                    codigo_negocio: BUSINESS_CODE,
+                    telefono_cliente: app.data.phone,
+                    emisor: 'cliente',
+                    contenido: text
+                }]);
+            },
+
+            renderMessage(msg) {
+                const container = document.getElementById('chatContainer');
+                const div = document.createElement('div');
+                div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
+                div.textContent = msg.contenido;
+                container.appendChild(div);
+            },
+
+            scrollToBottom() {
+                const container = document.getElementById('chatContainer');
+                setTimeout(() => container.scrollTop = container.scrollHeight, 100);
+            },
+            
+            handleEnter(e) { if(e.key === 'Enter') this.send(); }
+        };
+    </script>
+</body>
+
+</html>
