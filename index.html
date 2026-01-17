@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Glow Admin Portal - CRM</title>
+    <title>Glow Admin Portal - SaaS</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -54,12 +54,8 @@
 
         /* DASHBOARD LAYOUT */
         #dashboard { 
-            display: none; 
-            flex-direction: column;
-            height: 100%;
-            max-width: 1000px; 
-            margin: 0 auto; 
-            width: 100%; 
+            display: none; flex-direction: column; height: 100%;
+            max-width: 1000px; margin: 0 auto; width: 100%; 
         }
         
         .header-section { padding: 20px; padding-bottom: 0; flex-shrink: 0; }
@@ -78,248 +74,95 @@
         
         /* SCROLLABLE CONTENT AREA */
         .content-scroll-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            padding-bottom: 80px; /* Space for mobile */
-            position: relative;
+            flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; position: relative;
         }
 
-        /* STATS & COMMON */
-        .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
-        .stat-card { background: var(--card); padding: 20px; border-radius: 16px; text-align: center; border: 1px solid var(--border); }
-        .stat-num { font-size: 2rem; font-weight: 700; color: var(--text); }
-        .stat-label { font-size: 0.8rem; color: var(--gray); text-transform: uppercase; }
+        /* CONFIGURACIÓN / MI SALÓN STYLES */
+        .config-card { background: var(--card); padding: 25px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 25px; }
+        .config-card h3 { font-family: 'Playfair Display'; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-label { display: block; color: var(--gray); margin-bottom: 8px; font-size: 0.9rem; }
+        .form-input { 
+            width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; 
+            border-radius: 8px; color: white; font-size: 1rem; margin-bottom: 5px;
+        }
+        
+        .services-list-config { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .srv-config-item { 
+            background: #1a1a1a; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #333;
+        }
+        .srv-config-img { width: 100%; height: 100px; object-fit: cover; }
+        .srv-config-info { padding: 10px; }
+        .srv-config-name { font-size: 0.85rem; font-weight: bold; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .srv-config-price { font-size: 0.8rem; color: var(--accent); }
+        .btn-delete-srv {
+            position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: var(--danger);
+            border: none; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .add-srv-box { 
+            background: #151515; border: 1px dashed #444; padding: 15px; border-radius: 12px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
 
         /* VIEWS */
         .view-section { display: none; height: 100%; }
         .view-section.active { display: block; animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* NOTIFICACIONES TOAST */
-        #toast-container {
-            position: fixed; top: 20px; right: 20px; z-index: 100000;
-            display: flex; flex-direction: column; gap: 10px; pointer-events: none;
-        }
-        .toast {
-            background: rgba(20, 20, 20, 0.95); border: 1px solid #333;
-            border-left: 4px solid var(--accent);
-            color: white; padding: 15px 20px; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(10px);
-            min-width: 300px; transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            pointer-events: all; display: flex; align-items: center; gap: 15px;
-        }
+        /* TOAST & CALENDAR & LIST STYLES (Conservados del original) */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 100000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: rgba(20, 20, 20, 0.95); border: 1px solid #333; border-left: 4px solid var(--accent); color: white; padding: 15px 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(10px); min-width: 300px; transform: translateX(120%); transition: transform 0.4s; pointer-events: all; display: flex; align-items: center; gap: 15px; }
         .toast.active { transform: translateX(0); }
-        .toast-icon { font-size: 1.8rem; color: var(--accent); }
-        .toast-content h4 { font-size: 0.95rem; margin-bottom: 2px; font-weight: 600; }
-        .toast-content p { font-size: 0.85rem; color: #aaa; margin: 0; }
-
-        /* CALENDARIO & STATS */
-        .calendar-stats-container {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px;
-        }
-        .c-stat-box {
-            background: linear-gradient(145deg, #1a1a1a, #111);
-            padding: 20px; border-radius: 20px; border: 1px solid var(--border);
-            position: relative; overflow: hidden;
-        }
-        .c-stat-box h3 { font-size: 2.5rem; font-family: 'Playfair Display', serif; margin-bottom: 5px; z-index: 2; position: relative; }
-        .c-stat-box p { color: #888; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; z-index: 2; position: relative; }
         
+        .calendar-stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .c-stat-box { background: linear-gradient(145deg, #1a1a1a, #111); padding: 20px; border-radius: 20px; border: 1px solid var(--border); overflow: hidden; }
+        .c-stat-box h3 { font-size: 2.5rem; font-family: 'Playfair Display', serif; margin-bottom: 5px; }
+        .c-stat-box p { color: #888; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
         .progress-bg { width: 100%; height: 6px; background: #333; border-radius: 3px; margin-top: 15px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
 
-        /* Calendario Grid */
         .calendar-frame { background: var(--card); border-radius: 24px; padding: 20px; border: 1px solid var(--border); }
         .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .cal-header h3 { font-family: 'Playfair Display'; font-size: 1.2rem; }
-        .cal-nav-btn { background: #222; border: none; width: 35px; height: 35px; border-radius: 50%; color: white; cursor: pointer; }
-        
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; }
-        .cal-day-name { color: #666; font-size: 0.8rem; margin-bottom: 10px; font-weight: 600; }
-        
-        .cal-day { 
-            aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border-radius: 12px; cursor: pointer; transition: 0.2s; position: relative; font-size: 0.95rem;
-            border: 1px solid transparent;
-        }
+        .cal-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; position: relative; border: 1px solid transparent; }
         .cal-day:hover { background: #222; }
-        .cal-day.empty { pointer-events: none; }
         .cal-day.today { background: #222; color: var(--accent); border-color: var(--accent); font-weight: bold; }
-        
-        .cal-dot { 
-            width: 5px; height: 5px; background: var(--accent); border-radius: 50%; 
-            margin-top: 4px; opacity: 0; transform: scale(0); transition: 0.3s;
-        }
-        .cal-day.has-event .cal-dot { opacity: 1; transform: scale(1); }
+        .cal-dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; margin-top: 4px; opacity: 0; }
+        .cal-day.has-event .cal-dot { opacity: 1; }
         .cal-day.has-event.pending .cal-dot { background: #ffcc00; }
 
-        /* MODAL */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
-            z-index: 10000; display: flex; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s;
-        }
-        .modal-overlay.active { opacity: 1; pointer-events: all; }
-        
-        .modal-content {
-            background: #151515; width: 90%; max-width: 400px; border-radius: 24px;
-            padding: 30px; position: relative; border: 1px solid #333;
-            transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .modal-overlay.active .modal-content { transform: translateY(0); }
-        
-        .modal-date { font-family: 'Playfair Display'; font-size: 1.8rem; margin-bottom: 5px; }
-        .modal-subtitle { color: #888; font-size: 0.9rem; margin-bottom: 25px; }
-        
-        .event-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .event-item { 
-            background: #0a0a0a; padding: 15px; border-radius: 16px; border: 1px solid #222; 
-            display: flex; align-items: center; gap: 15px; 
-        }
-        .event-time { font-weight: 700; color: var(--accent); font-size: 0.9rem; width: 45px; }
-        .event-details h4 { font-size: 1rem; color: white; margin-bottom: 2px; }
-        .event-details p { font-size: 0.8rem; color: #888; }
-        .event-status { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; }
-
-        /* RESERVAS STYLES */
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
-        .filter-chip { 
-            padding: 8px 16px; background: #222; border-radius: 20px; font-size: 0.9rem; color: var(--gray); cursor: pointer; white-space: nowrap; 
-        }
-        .filter-chip.active { background: var(--text); color: var(--bg); }
-
         .bookings-list { display: flex; flex-direction: column; gap: 15px; }
-        .booking-card {
-            background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border);
-            display: flex; flex-direction: column; gap: 10px; position: relative;
-        }
+        .booking-card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
         .b-header { display: flex; justify-content: space-between; align-items: flex-start; }
-        .b-name { font-weight: 600; font-size: 1.1rem; }
-        .b-service { color: var(--accent); font-size: 0.9rem; }
-        .b-details { display: flex; gap: 20px; color: #ccc; font-size: 0.95rem; margin: 5px 0 15px 0; }
-        .b-detail-item { display: flex; align-items: center; gap: 6px; }
-        .b-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn-action { padding: 10px; border-radius: 8px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
-        .btn-approve { background: rgba(0, 224, 143, 0.1); color: var(--success); border: 1px solid rgba(0, 224, 143, 0.3); }
-        .btn-reject { background: rgba(255, 46, 46, 0.1); color: var(--danger); border: 1px solid rgba(255, 46, 46, 0.3); }
-        .status-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        .status-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; }
         .st-pendiente { background: #332b00; color: #ffcc00; }
         .st-confirmada { background: #003322; color: #00E08F; }
         .st-cancelada { background: #330000; color: #FF2E2E; }
+        .btn-action { padding: 10px; border-radius: 8px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
+        .btn-approve { background: rgba(0, 224, 143, 0.1); color: var(--success); border: 1px solid rgba(0, 224, 143, 0.3); }
+        .btn-reject { background: rgba(255, 46, 46, 0.1); color: var(--danger); border: 1px solid rgba(255, 46, 46, 0.3); }
 
-        /* CLIENTES STYLES */
-        .search-container { position: relative; margin-bottom: 20px; }
-        .search-icon { position: absolute; left: 15px; top: 15px; color: var(--gray); }
-        .search-input { padding-left: 45px; text-align: left; text-transform: none; letter-spacing: 0; }
-        .client-card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .c-avatar { width: 50px; height: 50px; background: #222; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--accent); font-size: 1.2rem; border: 1px solid #333; flex-shrink: 0; }
-        .c-info { flex: 1; margin-left: 15px; }
-        .c-name { font-weight: 600; font-size: 1.1rem; margin-bottom: 4px; }
-        .c-stats { display: flex; gap: 15px; font-size: 0.85rem; color: var(--gray); }
-        .c-tag { background: #222; padding: 5px 10px; border-radius: 8px; font-size: 0.8rem; color: #fff; border: 1px solid #333; white-space: nowrap; }
-
-        /* --- CHAT ARREGLADO (Layout Flexible) --- */
-        .chat-layout { 
-            display: grid; 
-            grid-template-columns: 320px 1fr; 
-            gap: 0; 
-            height: 100%; /* Ocupa todo el alto disponible */
-            min-height: 500px;
-            background: var(--card); 
-            border-radius: 16px; 
-            overflow: hidden; 
-            border: 1px solid var(--border); 
-        }
-        
-        .chat-list { 
-            border-right: 1px solid var(--border); 
-            overflow-y: auto; 
-            background: #111; 
-            height: 100%; 
-        }
-        
-        .chat-item { padding: 18px 20px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; }
-        .chat-item:hover { background: #1a1a1a; }
+        /* CHAT */
+        .chat-layout { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: 100%; min-height: 500px; background: var(--card); border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+        .chat-list { border-right: 1px solid var(--border); overflow-y: auto; background: #111; height: 100%; }
+        .chat-item { padding: 18px 20px; border-bottom: 1px solid var(--border); cursor: pointer; }
         .chat-item.active { background: #222; border-left: 3px solid var(--accent); }
-        
-        .chat-info h4 { color: white; font-size: 1rem; margin-bottom: 4px; font-weight: 600; }
-        .chat-info p { color: #888; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; margin: 0; }
-        .unread-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
-        
-        .chat-view { 
-            display: flex; 
-            flex-direction: column; 
-            background: #050505; 
-            height: 100%;
-            position: relative;
-        }
-        
-        .cv-header { 
-            padding: 15px 20px; 
-            border-bottom: 1px solid var(--border); 
-            background: #111; 
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-            flex-shrink: 0;
-        }
-        
-        .cv-back-btn { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-        
-        .cv-body { 
-            flex: 1; 
-            padding: 20px; 
-            overflow-y: auto; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-            background-image: radial-gradient(#1a1a1a 1px, transparent 1px); 
-            background-size: 20px 20px; 
-        }
-        
-        /* FOOTER DE CHAT SIEMPRE VISIBLE */
-        .cv-footer { 
-            padding: 15px; 
-            background: #111; 
-            display: flex; 
-            gap: 10px; 
-            border-top: 1px solid var(--border); 
-            align-items: center; 
-            flex-shrink: 0;
-            position: relative;
-            z-index: 10;
-        }
-        
-        .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; color: white; position: relative; word-wrap: break-word; }
-        .msg-bubble.admin { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 4px; }
-        .msg-bubble.cliente { align-self: flex-start; background: #222; border: 1px solid #333; border-bottom-left-radius: 4px; }
+        .chat-view { display: flex; flex-direction: column; background: #050505; height: 100%; position: relative; }
+        .cv-body { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .cv-footer { padding: 15px; background: #111; display: flex; gap: 10px; border-top: 1px solid var(--border); }
+        .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; color: white; }
+        .msg-bubble.admin { align-self: flex-end; background: var(--accent); }
+        .msg-bubble.cliente { align-self: flex-start; background: #222; }
 
         @media (max-width: 768px) {
             #dashboard { height: 100vh; overflow: hidden; }
             .content-scroll-area { padding: 15px; padding-bottom: 20px; }
-            
-            /* Ajuste de chat móvil */
-            .chat-layout { display: block; border: none; background: transparent; height: 100%; border-radius: 0; }
-            .chat-list { border: none; background: transparent; height: 100%; }
-            
-            .chat-view { 
-                position: fixed; 
-                top: 0; 
-                left: 0; 
-                width: 100vw; 
-                height: 100dvh; 
-                z-index: 10000; 
-                background: #000; 
-                transform: translateX(100%); 
-                transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
-            }
+            .chat-layout { display: block; border: none; background: transparent; height: 100%; }
+            .chat-list { height: 100%; }
+            .chat-view { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 10000; transform: translateX(100%); transition: transform 0.3s; }
             .chat-view.active { transform: translateX(0); }
-            
-            .cv-header { padding-top: max(15px, env(safe-area-inset-top)); background: #111; }
-            .cv-back-btn { display: block; }
-            .cv-footer { padding-bottom: max(15px, env(safe-area-inset-bottom)); }
         }
     </style>
 </head>
@@ -351,12 +194,13 @@
             <div class="nav-tabs">
                 <button class="tab-btn active" onclick="admin.switchTab('calendar', this)">Calendario</button>
                 <button class="tab-btn" onclick="admin.switchTab('reservas', this)">Lista</button>
-                <button class="tab-btn" onclick="admin.switchTab('clientes', this)">Clientes</button>
                 <button class="tab-btn" onclick="admin.switchTab('mensajes', this)">Mensajes <span id="msgNotify" style="display:none; color:var(--accent)">•</span></button>
+                <button class="tab-btn" onclick="admin.switchTab('config', this)"><i class="ph ph-gear"></i> Mi Salón</button>
             </div>
         </div>
 
         <div class="content-scroll-area">
+            
             <div id="view-calendar" class="view-section active">
                 <div class="calendar-stats-container">
                     <div class="c-stat-box">
@@ -373,178 +217,130 @@
 
                 <div class="calendar-frame">
                     <div class="cal-header">
-                        <button class="cal-nav-btn" onclick="adminCalendar.changeMonth(-1)"><i class="ph ph-caret-left"></i></button>
-                        <h3 id="calMonthLabel">Enero 2024</h3>
-                        <button class="cal-nav-btn" onclick="adminCalendar.changeMonth(1)"><i class="ph ph-caret-right"></i></button>
+                        <button class="cal-nav-btn" onclick="adminCalendar.changeMonth(-1)" style="background:none; border:none; color:white; font-size:1.2rem;"><i class="ph ph-caret-left"></i></button>
+                        <h3 id="calMonthLabel">--</h3>
+                        <button class="cal-nav-btn" onclick="adminCalendar.changeMonth(1)" style="background:none; border:none; color:white; font-size:1.2rem;"><i class="ph ph-caret-right"></i></button>
                     </div>
                     <div class="cal-grid">
-                        <div class="cal-day-name">D</div><div class="cal-day-name">L</div>
-                        <div class="cal-day-name">M</div><div class="cal-day-name">M</div>
-                        <div class="cal-day-name">J</div><div class="cal-day-name">V</div>
-                        <div class="cal-day-name">S</div>
+                        <div class="cal-day-name" style="color:#666; font-size:0.8rem;">D</div><div class="cal-day-name" style="color:#666; font-size:0.8rem;">L</div>
+                        <div class="cal-day-name" style="color:#666; font-size:0.8rem;">M</div><div class="cal-day-name" style="color:#666; font-size:0.8rem;">M</div>
+                        <div class="cal-day-name" style="color:#666; font-size:0.8rem;">J</div><div class="cal-day-name" style="color:#666; font-size:0.8rem;">V</div>
+                        <div class="cal-day-name" style="color:#666; font-size:0.8rem;">S</div>
                     </div>
                     <div class="cal-grid" id="calDaysGrid"></div>
                 </div>
             </div>
 
             <div id="view-reservas" class="view-section">
-                <div class="filter-bar">
-                    <div class="filter-chip active" onclick="admin.filter('todas', this)">Todas</div>
-                    <div class="filter-chip" onclick="admin.filter('pendiente', this)">Pendientes</div>
-                    <div class="filter-chip" onclick="admin.filter('confirmada', this)">Confirmadas</div>
-                    <div class="filter-chip" onclick="admin.filter('cancelada', this)">Canceladas</div>
+                <div style="display:flex; gap:10px; margin-bottom:20px; overflow-x:auto;">
+                    <button onclick="admin.filter('todas')" class="btn-primary" style="width:auto; padding:8px 15px; font-size:0.9rem;">Todas</button>
+                    <button onclick="admin.filter('pendiente')" style="background:#222; border:none; color:#ccc; border-radius:20px; padding:8px 15px;">Pendientes</button>
                 </div>
                 <div class="bookings-list" id="bookingsList"></div>
             </div>
 
-            <div id="view-clientes" class="view-section">
-                <div class="search-container">
-                    <i class="ph ph-magnifying-glass search-icon"></i>
-                    <input type="text" class="search-input" placeholder="Buscar cliente por nombre..." onkeyup="admin.searchClients(this.value)">
-                </div>
-                <div class="stats-row">
-                    <div class="stat-card">
-                        <div class="stat-num" id="statClientsTotal">0</div>
-                        <div class="stat-label">Clientes Únicos</div>
+            <div id="view-config" class="view-section">
+                
+                <div class="config-card">
+                    <h3>Identidad del Negocio</h3>
+                    <div class="form-group">
+                        <label class="form-label">Nombre del Salón</label>
+                        <input type="text" class="form-input" id="cfgNombreSalon" placeholder="Ej: Glow Spa">
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-num" id="statVip" style="color: var(--accent)">0</div>
-                        <div class="stat-label">Clientes VIP</div>
+                    <div class="form-group">
+                        <label class="form-label">Nombre Encargada (Para el Chat)</label>
+                        <input type="text" class="form-input" id="cfgEncargada" placeholder="Ej: Sofía">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">URL Portada (Fondo)</label>
+                        <input type="text" class="form-input" id="cfgPortada" placeholder="https://...">
+                        <small style="color:#666">Usa un link de imagen directo (Ej: ImgBB)</small>
                     </div>
                 </div>
-                <div id="clientsList"></div>
+
+                <div class="config-card">
+                    <h3>Mis Servicios</h3>
+                    <div class="services-list-config" id="cfgServicesList">
+                        </div>
+                    
+                    <div class="add-srv-box">
+                        <h4 style="font-size:1rem; margin-bottom:10px;">Agregar Nuevo Servicio</h4>
+                        <input type="text" class="form-input" id="newSrvName" placeholder="Nombre (Ej: Manicure)">
+                        <input type="text" class="form-input" id="newSrvPrice" placeholder="Precio (Ej: $25) - Opcional">
+                        <input type="text" class="form-input" id="newSrvImg" placeholder="URL Imagen (Ej: https://...)">
+                        <button class="btn-primary" onclick="admin.addService()">+ Agregar Servicio</button>
+                    </div>
+                </div>
+
+                <button class="btn-primary" style="position:sticky; bottom:20px; box-shadow:0 10px 40px rgba(224,0,224,0.4);" onclick="admin.saveConfig()">
+                    <i class="ph ph-floppy-disk"></i> Guardar Cambios
+                </button>
+                <br><br>
             </div>
 
             <div id="view-mensajes" class="view-section">
                 <div class="chat-layout">
-                    <div class="chat-list" id="inboxList">
-                        <div style="padding:40px; text-align:center; color:#666;">Cargando chats...</div>
-                    </div>
+                    <div class="chat-list" id="inboxList"></div>
                     <div class="chat-view" id="adminChatView">
-                        <div class="cv-header">
-                            <button class="cv-back-btn" onclick="adminChat.closeMobile()"><i class="ph ph-arrow-left"></i></button>
-                            <div>
-                                <span id="chatActiveUser" style="font-size:1.1rem; display:block;">Selecciona un chat</span>
-                                <span style="font-size:0.8rem; color:#888;">En línea</span>
-                            </div>
+                        <div style="padding:15px; border-bottom:1px solid #222; display:flex; align-items:center;">
+                            <button onclick="adminChat.closeMobile()" style="background:none; border:none; color:white; font-size:1.5rem; margin-right:10px; display:none;" id="chatBackBtn"><i class="ph ph-arrow-left"></i></button>
+                            <span id="chatActiveUser">Selecciona un chat</span>
                         </div>
-                        <div class="cv-body" id="adminChatBody">
-                             <div style="display:flex; height:100%; align-items:center; justify-content:center; color:#555;">
-                                 <p>Selecciona una conversación de la lista</p>
-                             </div>
-                        </div>
+                        <div class="cv-body" id="adminChatBody"></div>
                         <div class="cv-footer" id="chatFooterInput" style="display:none;">
-                            <input type="text" id="adminChatInput" placeholder="Escribe un mensaje..." style="margin-bottom:0; background:#222; border:none;" onkeypress="if(event.key === 'Enter') adminChat.send()">
-                            <button class="btn-primary" onclick="adminChat.send()" style="width: auto; padding: 12px 20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
-                                <i class="ph ph-paper-plane-right" style="font-size:1.2rem"></i>
-                            </button>
+                            <input type="text" id="adminChatInput" placeholder="Escribe..." style="background:#222; border:none; color:white; padding:12px; border-radius:20px; flex:1; outline:none;" onkeypress="if(event.key === 'Enter') adminChat.send()">
+                            <button onclick="adminChat.send()" style="width:45px; height:45px; border-radius:50%; background:var(--accent); border:none; color:white; display:flex; align-items:center; justify-content:center;"><i class="ph ph-paper-plane-right"></i></button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div> </div>
 
-    <div class="modal-overlay" id="dateModal" onclick="if(event.target === this) adminCalendar.closeModal()">
-        <div class="modal-content">
-            <h2 class="modal-date" id="modalDateTitle">--</h2>
-            <p class="modal-subtitle" id="modalCountSubtitle">0 reservas programadas</p>
-            <div class="event-list" id="modalEventList"></div>
-            <button style="margin-top:20px; background:#222; color:white; padding:12px; width:100%; border-radius:12px; border:none; cursor:pointer;" onclick="adminCalendar.closeModal()">Cerrar</button>
+        </div>
+    </div>
+
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; display:none; align-items:center; justify-content:center;" id="dateModal" onclick="if(event.target === this) adminCalendar.closeModal()">
+        <div style="background:#151515; padding:30px; border-radius:20px; width:90%; max-width:400px; border:1px solid #333;">
+            <h2 id="modalDateTitle" style="font-family:'Playfair Display'; margin-bottom:5px;">--</h2>
+            <div id="modalEventList" style="margin-top:20px; display:flex; flex-direction:column; gap:10px;"></div>
+            <button onclick="adminCalendar.closeModal()" style="margin-top:20px; background:#333; color:white; width:100%; padding:12px; border-radius:10px; border:none;">Cerrar</button>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURACIÓN SUPABASE ---
+        // CONFIGURACIÓN SUPABASE
         const SUPABASE_URL = 'https://luwcggpjvsrhvdwjiarw.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1d2NnZ3BqdnNyaHZkd2ppYXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NjE4NTcsImV4cCI6MjA4MzIzNzg1N30.L_Yl3cVXdvLGcz3VZD-icJXAE4_myxqGo6o5dAkKw0M';
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- SISTEMA DE NOTIFICACIONES VISUALES ---
+        // DEFAULT DEMO DATA (Si el admin es nuevo)
+        const DEMO_CONFIG = {
+            nombre_salon: 'GLOW',
+            nombre_encargada: 'Sofía Hernández',
+            imagen_portada: 'https://i.ibb.co/67C1hcrb/1767558273844.png',
+            servicios: [
+                { name: 'Corte y Secado', price: '', img: 'https://i.ibb.co/MDjWPmnP/1768612232066.png' },
+                { name: 'Color y Mechas', price: '', img: 'https://i.ibb.co/HfSxF2BS/1768649929059.png' },
+                { name: 'Manicure', price: '', img: 'https://i.ibb.co/HT95Xhqc/1768612130852.png' }
+            ]
+        };
+
         const notifications = {
             show(title, message, type = 'info') {
                 const container = document.getElementById('toast-container');
                 const toast = document.createElement('div');
                 toast.className = 'toast';
-                
-                let icon = 'ph-bell';
-                if(type === 'reserva') icon = 'ph-calendar-plus';
-                if(type === 'mensaje') icon = 'ph-chat-circle-text';
-
-                toast.innerHTML = `
-                    <i class="ph ${icon} toast-icon"></i>
-                    <div class="toast-content">
-                        <h4>${title}</h4>
-                        <p>${message}</p>
-                    </div>
-                `;
-
+                toast.innerHTML = `<i class="ph ph-bell" style="font-size:1.5rem; color:var(--accent)"></i><div><h4 style="margin:0; font-size:0.9rem">${title}</h4><p style="margin:0; font-size:0.8rem; color:#aaa">${message}</p></div>`;
                 container.appendChild(toast);
-                
-                const audio = document.getElementById('notifySound');
-                if(audio) { 
-                    audio.currentTime = 0; 
-                    audio.play().catch(e => console.log("Interacción requerida para audio")); 
-                }
-
-                requestAnimationFrame(() => toast.classList.add('active'));
-
-                setTimeout(() => {
-                    toast.classList.remove('active');
-                    setTimeout(() => toast.remove(), 400);
-                }, 5000);
+                document.getElementById('notifySound').play().catch(()=>{});
+                setTimeout(()=>toast.classList.add('active'),10);
+                setTimeout(()=>{ toast.classList.remove('active'); setTimeout(()=>toast.remove(),400); }, 5000);
             }
         };
 
-        // --- PUSH MANAGER ---
-        const pushManager = {
-            publicKey: "BGnVsu2EOWLendskkjd3veXBygPmvnFh1rC6oYnUBWbV7K_610tJXvS5qAjN7bMw-ZEN20ZwgQNmyUKTRevf5qo",
-
-            async init() {
-                if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-                try {
-                    await navigator.serviceWorker.register('sw.js');
-                    const registration = await navigator.serviceWorker.ready;
-                    await this.subscribeUser(registration);
-                } catch (error) {
-                    console.error('Error inicializando Push:', error);
-                }
-            },
-
-            async subscribeUser(registration) {
-                try {
-                    const existingSub = await registration.pushManager.getSubscription();
-                    if (existingSub) {
-                        await this.saveSubscriptionToSupabase(existingSub);
-                        return;
-                    }
-                    const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: this.publicKey
-                    });
-                    await this.saveSubscriptionToSupabase(subscription);
-                } catch (err) {
-                    console.error('Error suscribiendo:', err);
-                }
-            },
-
-            async saveSubscriptionToSupabase(subscription) {
-                if (!admin.code) return;
-                const subJson = JSON.parse(JSON.stringify(subscription));
-                await supabaseClient
-                    .from('admin_subscriptions')
-                    .upsert({ codigo_negocio: admin.code, subscription: subJson }, { onConflict: 'subscription' });
-            }
-        };
-
-        // --- ADMIN APP PRINCIPAL ---
         const admin = {
-            code: null,
-            data: [], 
-            clientsData: [], 
-            currentFilter: 'todas',
-            realtimeSubscription: null,
-
+            code: null, data: [], currentConfig: {...DEMO_CONFIG},
+            
             init() {
                 const storedCode = localStorage.getItem('glowAdminCode');
                 if(storedCode) {
@@ -554,23 +350,16 @@
             },
 
             async login() {
-                const input = document.getElementById('businessCodeInput');
-                const val = input.value.trim().toUpperCase();
-                if(!val) { document.getElementById('loginError').style.display = 'block'; return; }
-
+                const val = document.getElementById('businessCodeInput').value.trim().toUpperCase();
+                if(!val) return;
                 this.code = val;
                 localStorage.setItem('glowAdminCode', val);
-                document.getElementById('login-screen').style.opacity = '0';
-                
-                if(Notification.permission !== 'granted') Notification.requestPermission();
-                pushManager.init();
-
-                setTimeout(() => {
-                    document.getElementById('login-screen').style.display = 'none';
-                    document.getElementById('dashboard').style.display = 'flex'; // Cambiado a flex
-                    this.loadData();
-                }, 400);
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'flex';
                 document.getElementById('dashCodeDisplay').textContent = `Código: ${this.code}`;
+                
+                this.loadData();
+                this.loadConfig(); // Cargar configuración del salón
             },
 
             logout() { localStorage.removeItem('glowAdminCode'); location.reload(); },
@@ -582,355 +371,275 @@
                 document.getElementById(`view-${tabName}`).classList.add('active');
             },
 
-            async loadData() {
-                const list = document.getElementById('bookingsList');
-                list.innerHTML = '<div style="text-align:center; padding:40px; color:#444;">Actualizando...</div>';
-
-                const { data, error } = await supabaseClient
-                    .from('reservas')
-                    .select('*')
-                    .eq('codigo_negocio', this.code)
-                    .order('created_at', { ascending: false });
-
-                if(error) { list.innerHTML = `<div style="color:red; text-align:center;">Error: ${error.message}</div>`; return; }
-
-                this.data = data;
-                this.renderList();
-                this.processClients();
-                
-                adminCalendar.init();
-                adminChat.init();
-
-                this.subscribeToReservations();
-            },
-
-            subscribeToReservations() {
-                if(this.realtimeSubscription) supabaseClient.removeChannel(this.realtimeSubscription);
-
-                this.realtimeSubscription = supabaseClient
-                    .channel('reservas_admin_channel')
-                    .on('postgres_changes', 
-                        { event: 'INSERT', schema: 'public', table: 'reservas', filter: `codigo_negocio=eq.${this.code}` }, 
-                        (payload) => {
-                            const newReserva = payload.new;
-                            notifications.show('Nueva Reserva', `${newReserva.nombre} reservó para el ${newReserva.fecha}`, 'reserva');
-                            this.data.unshift(newReserva);
-                            this.renderList();
-                            this.processClients();
-                            adminCalendar.render();
-                            adminCalendar.updateStats();
-                        }
-                    )
-                    .subscribe();
-            },
-
-            filter(status, btnElement) {
-                this.currentFilter = status;
-                document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
-                if(btnElement) btnElement.classList.add('active');
-                this.renderList();
-            },
-
-            renderList() {
-                const container = document.getElementById('bookingsList');
-                container.innerHTML = '';
-                const filtered = this.currentFilter === 'todas' ? this.data : this.data.filter(r => r.estado === this.currentFilter);
-                if(filtered.length === 0) { container.innerHTML = '<div style="text-align:center; padding:40px; color:#444;">No hay reservas con este estado.</div>'; return; }
-
-                filtered.forEach(res => {
-                    const dateObj = new Date(res.fecha + 'T00:00:00');
-                    const dateStr = dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-                    let statusClass = res.estado === 'confirmada' ? 'st-confirmada' : (res.estado === 'cancelada' ? 'st-cancelada' : 'st-pendiente');
-                    
-                    let actionsHtml = '';
-                    if(res.estado === 'pendiente') {
-                        actionsHtml = `<div class="b-actions"><button class="btn-action btn-reject" onclick="admin.updateStatus('${res.id}', 'cancelada')"><i class="ph ph-x"></i> Rechazar</button><button class="btn-action btn-approve" onclick="admin.updateStatus('${res.id}', 'confirmada')"><i class="ph ph-check"></i> Confirmar</button></div>`;
-                    }
-
-                    const card = document.createElement('div');
-                    card.className = 'booking-card';
-                    card.innerHTML = `<div class="b-header"><div><div class="b-name">${res.nombre} ${res.apellido}</div><div class="b-service">${res.servicio}</div></div><span class="status-badge ${statusClass}">${res.estado}</span></div><div class="b-details"><div class="b-detail-item"><i class="ph ph-calendar-blank"></i> ${dateStr}</div><div class="b-detail-item"><i class="ph ph-clock"></i> ${res.hora}</div></div>${actionsHtml}`;
-                    container.appendChild(card);
-                });
-            },
-
-            async updateStatus(id, newStatus) {
-                const index = this.data.findIndex(r => r.id === id);
-                if(index > -1) { 
-                    this.data[index].estado = newStatus; 
-                    this.renderList(); 
-                    this.processClients();
-                    adminCalendar.render(); 
+            // --- LÓGICA DE CONFIGURACIÓN ---
+            async loadConfig() {
+                const { data } = await supabaseClient.from('negocios').select('*').eq('codigo_negocio', this.code).single();
+                if(data) {
+                    this.currentConfig = {
+                        nombre_salon: data.nombre_salon || DEMO_CONFIG.nombre_salon,
+                        nombre_encargada: data.nombre_encargada || DEMO_CONFIG.nombre_encargada,
+                        imagen_portada: data.imagen_portada || DEMO_CONFIG.imagen_portada,
+                        servicios: data.servicios || DEMO_CONFIG.servicios
+                    };
                 }
-                await supabaseClient.from('reservas').update({ estado: newStatus }).eq('id', id);
+                this.renderConfigForm();
             },
 
-            processClients() {
-                const clientsMap = {};
-                this.data.forEach(r => {
-                    const key = `${r.nombre.trim().toLowerCase()}-${r.apellido.trim().toLowerCase()}`;
-                    if(!clientsMap[key]) { clientsMap[key] = { nombre: r.nombre, apellido: r.apellido, visitas: 0, servicios: {}, ultimaFecha: r.fecha }; }
-                    const client = clientsMap[key];
-                    client.visitas++;
-                    if(!client.servicios[r.servicio]) client.servicios[r.servicio] = 0;
-                    client.servicios[r.servicio]++;
-                    if(new Date(r.fecha) > new Date(client.ultimaFecha)) client.ultimaFecha = r.fecha;
+            renderConfigForm() {
+                document.getElementById('cfgNombreSalon').value = this.currentConfig.nombre_salon;
+                document.getElementById('cfgEncargada').value = this.currentConfig.nombre_encargada;
+                document.getElementById('cfgPortada').value = this.currentConfig.imagen_portada;
+                
+                const list = document.getElementById('cfgServicesList');
+                list.innerHTML = '';
+                this.currentConfig.servicios.forEach((srv, idx) => {
+                    const div = document.createElement('div'); div.className = 'srv-config-item';
+                    div.innerHTML = `
+                        <button class="btn-delete-srv" onclick="admin.removeService(${idx})"><i class="ph ph-trash"></i></button>
+                        <img src="${srv.img}" class="srv-config-img" onerror="this.src='https://via.placeholder.com/150'">
+                        <div class="srv-config-info">
+                            <div class="srv-config-name">${srv.name}</div>
+                            <div class="srv-config-price">${srv.price || 'Sin precio'}</div>
+                        </div>
+                    `;
+                    list.appendChild(div);
                 });
-                this.clientsData = Object.values(clientsMap).map(c => {
-                    const favService = Object.keys(c.servicios).reduce((a, b) => c.servicios[a] > c.servicios[b] ? a : b);
-                    return { ...c, favService };
-                }).sort((a, b) => b.visitas - a.visitas);
-                document.getElementById('statClientsTotal').textContent = this.clientsData.length;
-                document.getElementById('statVip').textContent = this.clientsData.filter(c => c.visitas >= 3).length;
-                this.renderClients(this.clientsData);
             },
 
-            renderClients(list) {
-                const container = document.getElementById('clientsList');
-                container.innerHTML = '';
-                if(list.length === 0) { container.innerHTML = '<div style="text-align:center; padding:40px; color:#444;">No hay clientes.</div>'; return; }
-                list.forEach(c => {
-                    const isVip = c.visitas >= 3 ? '<i class="ph ph-crown" style="color:gold; margin-left:5px;"></i>' : '';
-                    const card = document.createElement('div'); card.className = 'client-card';
-                    card.innerHTML = `<div class="c-avatar">${(c.nombre[0]+c.apellido[0]).toUpperCase()}</div><div class="c-info"><div class="c-name">${c.nombre} ${c.apellido} ${isVip}</div><div class="c-stats"><div class="c-stat-item"><i class="ph ph-calendar-check"></i> ${c.visitas} Visitas</div><div class="c-stat-item"><i class="ph ph-star"></i> ${c.favService}</div></div></div><div class="c-tag">Última: ${c.ultimaFecha}</div>`;
+            addService() {
+                const name = document.getElementById('newSrvName').value.trim();
+                const price = document.getElementById('newSrvPrice').value.trim();
+                const img = document.getElementById('newSrvImg').value.trim();
+                
+                if(!name) return alert("El nombre es obligatorio");
+                
+                this.currentConfig.servicios.push({ 
+                    name, price, 
+                    img: img || 'https://via.placeholder.com/300?text=Servicio' 
+                });
+                
+                // Limpiar inputs
+                document.getElementById('newSrvName').value = '';
+                document.getElementById('newSrvPrice').value = '';
+                document.getElementById('newSrvImg').value = '';
+                
+                this.renderConfigForm();
+            },
+
+            removeService(index) {
+                if(confirm("¿Eliminar este servicio?")) {
+                    this.currentConfig.servicios.splice(index, 1);
+                    this.renderConfigForm();
+                }
+            },
+
+            async saveConfig() {
+                // Actualizar objeto local
+                this.currentConfig.nombre_salon = document.getElementById('cfgNombreSalon').value;
+                this.currentConfig.nombre_encargada = document.getElementById('cfgEncargada').value;
+                this.currentConfig.imagen_portada = document.getElementById('cfgPortada').value;
+
+                // Guardar en Supabase (Upsert: Crea si no existe, actualiza si existe)
+                const { error } = await supabaseClient.from('negocios').upsert({
+                    codigo_negocio: this.code,
+                    nombre_salon: this.currentConfig.nombre_salon,
+                    nombre_encargada: this.currentConfig.nombre_encargada,
+                    imagen_portada: this.currentConfig.imagen_portada,
+                    servicios: this.currentConfig.servicios
+                });
+
+                if(error) {
+                    alert("Error al guardar: " + error.message);
+                } else {
+                    notifications.show('Guardado', 'La configuración se actualizó correctamente.');
+                }
+            },
+
+            // --- LÓGICA DE DATOS GENERALES ---
+            async loadData() {
+                const { data } = await supabaseClient.from('reservas').select('*').eq('codigo_negocio', this.code).order('created_at', { ascending: false });
+                if(data) {
+                    this.data = data;
+                    this.renderList();
+                    adminCalendar.init();
+                    this.subscribe();
+                }
+                adminChat.init();
+            },
+
+            subscribe() {
+                supabaseClient.channel('admin_res').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reservas', filter: `codigo_negocio=eq.${this.code}` }, payload => {
+                    this.data.unshift(payload.new);
+                    this.renderList();
+                    adminCalendar.render();
+                    notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                }).subscribe();
+            },
+
+            filter(status) {
+                this.renderList(status);
+            },
+
+            renderList(filterStatus = 'todas') {
+                const container = document.getElementById('bookingsList'); container.innerHTML = '';
+                const filtered = filterStatus === 'todas' ? this.data : this.data.filter(r => r.estado === filterStatus);
+                
+                filtered.forEach(res => {
+                    const statusClass = res.estado === 'confirmada' ? 'st-confirmada' : (res.estado === 'cancelada' ? 'st-cancelada' : 'st-pendiente');
+                    let actions = '';
+                    if(res.estado === 'pendiente') {
+                        actions = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                            <div class="btn-action btn-reject" onclick="admin.updateStatus('${res.id}', 'cancelada')">Rechazar</div>
+                            <div class="btn-action btn-approve" onclick="admin.updateStatus('${res.id}', 'confirmada')">Confirmar</div>
+                        </div>`;
+                    }
+                    const card = document.createElement('div'); card.className = 'booking-card';
+                    card.innerHTML = `<div class="b-header"><div><div style="font-weight:600; font-size:1.1rem">${res.nombre} ${res.apellido}</div><div style="color:var(--accent); font-size:0.9rem">${res.servicio}</div></div><span class="status-badge ${statusClass}">${res.estado}</span></div><div style="color:#ccc; font-size:0.9rem; margin-top:5px;"><i class="ph ph-calendar-blank"></i> ${new Date(res.fecha+'T00:00:00').toLocaleDateString()} &nbsp; <i class="ph ph-clock"></i> ${res.hora}</div>${actions}`;
                     container.appendChild(card);
                 });
             },
-            searchClients(term) {
-                const clean = term.toLowerCase().trim();
-                this.renderClients(this.clientsData.filter(c => c.nombre.toLowerCase().includes(clean) || c.apellido.toLowerCase().includes(clean)));
+
+            async updateStatus(id, st) {
+                await supabaseClient.from('reservas').update({ estado: st }).eq('id', id);
+                const item = this.data.find(r => r.id === id); if(item) item.estado = st;
+                this.renderList(); adminCalendar.render();
             }
         };
 
-        // --- CALENDARIO LOGIC ---
         const adminCalendar = {
-            date: new Date(),
-            monthNames: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
-
-            init() { this.updateStats(); this.render(); },
-
-            updateStats() {
+            date: new Date(), monthNames: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+            init() { this.render(); },
+            render() {
+                const year = this.date.getFullYear(), month = this.date.getMonth();
+                document.getElementById('calMonthLabel').textContent = `${this.monthNames[month]} ${year}`;
+                const grid = document.getElementById('calDaysGrid'); grid.innerHTML = '';
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                // Stats update
                 const confirmed = admin.data.filter(r => r.estado === 'confirmada').length;
                 const pending = admin.data.filter(r => r.estado === 'pendiente').length;
                 const total = confirmed + pending || 1;
                 document.getElementById('cStatConfirmed').textContent = confirmed;
                 document.getElementById('cStatPending').textContent = pending;
-                setTimeout(() => {
-                    document.getElementById('progConfirmed').style.width = `${(confirmed/total)*100}%`;
-                    document.getElementById('progPending').style.width = `${(pending/total)*100}%`;
-                }, 500);
-            },
+                document.getElementById('progConfirmed').style.width = `${(confirmed/total)*100}%`;
+                document.getElementById('progPending').style.width = `${(pending/total)*100}%`;
 
-            render() {
-                const year = this.date.getFullYear(), month = this.date.getMonth();
-                const firstDay = new Date(year, month, 1).getDay();
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                document.getElementById('calMonthLabel').textContent = `${this.monthNames[month]} ${year}`;
-                const grid = document.getElementById('calDaysGrid');
-                grid.innerHTML = '';
-                for(let i=0; i<firstDay; i++) { grid.appendChild(document.createElement('div')).className = 'cal-day empty'; }
-                const today = new Date();
-                
+                for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
                 for(let i=1; i<=daysInMonth; i++) {
-                    const currentDayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                    const bookings = admin.data.filter(r => r.fecha === dateStr && r.estado !== 'cancelada');
                     const el = document.createElement('div'); el.className = 'cal-day';
-                    el.innerHTML = `<span>${i}</span><div class="cal-dot"></div>`;
-                    if(year === today.getFullYear() && month === today.getMonth() && i === today.getDate()) el.classList.add('today');
-                    const dayBookings = admin.data.filter(r => r.fecha === currentDayStr && r.estado !== 'cancelada');
-                    if(dayBookings.length > 0) {
+                    if(bookings.length > 0) {
                         el.classList.add('has-event');
-                        if(dayBookings.some(r => r.estado === 'pendiente')) el.classList.add('pending');
-                        el.onclick = () => this.openModal(i, this.monthNames[month], dayBookings);
+                        if(bookings.some(r => r.estado === 'pendiente')) el.classList.add('pending');
+                        el.onclick = () => this.openModal(i, this.monthNames[month], bookings);
                     }
+                    el.innerHTML = `<span>${i}</span><div class="cal-dot"></div>`;
                     grid.appendChild(el);
                 }
             },
-            changeMonth(delta) { this.date.setMonth(this.date.getMonth() + delta); this.render(); },
+            changeMonth(d) { this.date.setMonth(this.date.getMonth()+d); this.render(); },
             openModal(day, month, bookings) {
-                const modal = document.getElementById('dateModal');
-                const list = document.getElementById('modalEventList');
                 document.getElementById('modalDateTitle').textContent = `${day} de ${month}`;
-                document.getElementById('modalCountSubtitle').textContent = `${bookings.length} reservas programadas`;
-                list.innerHTML = '';
-                bookings.sort((a,b) => a.hora.localeCompare(b.hora));
+                const list = document.getElementById('modalEventList'); list.innerHTML = '';
                 bookings.forEach(b => {
-                    const color = b.estado === 'pendiente' ? '#ffcc00' : '#00E08F';
-                    const div = document.createElement('div'); div.className = 'event-item';
-                    div.innerHTML = `<div class="event-time">${b.hora}</div><div class="event-details"><h4>${b.nombre} ${b.apellido}</h4><p>${b.servicio}</p></div><div class="event-status" style="background:${color}"></div>`;
+                    const div = document.createElement('div');
+                    div.style.cssText = "background:#222; padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center";
+                    div.innerHTML = `<div><div style="font-weight:bold; color:white;">${b.nombre}</div><div style="font-size:0.8rem; color:#888;">${b.servicio} - ${b.hora}</div></div><div style="width:8px; height:8px; border-radius:50%; background:${b.estado==='pendiente'?'#ffcc00':'#00E08F'}"></div>`;
                     list.appendChild(div);
                 });
-                modal.classList.add('active');
+                document.getElementById('dateModal').style.display = 'flex';
             },
-            closeModal() { document.getElementById('dateModal').classList.remove('active'); }
+            closeModal() { document.getElementById('dateModal').style.display = 'none'; }
         };
 
-        // --- LÓGICA CHAT ADMIN (CORREGIDA) ---
         const adminChat = {
-            activePhone: null, conversations: {}, channel: null,
-            
+            activePhone: null, conversations: {},
             init() { 
-                if(!admin.code) return; 
-                this.loadConversations(); 
-                this.subscribeInbox();
+                if(!admin.code) return;
+                this.loadConversations();
+                this.subscribe();
             },
-            
             async loadConversations() {
-                const { data } = await supabaseClient
-                    .from('mensajes')
-                    .select('*')
-                    .eq('codigo_negocio', admin.code)
-                    .order('created_at', { ascending: true }); // Orden ascendente para historial
-                    
+                const { data } = await supabaseClient.from('mensajes').select('*').eq('codigo_negocio', admin.code).order('created_at', { ascending: true });
                 if(data) {
                     this.conversations = {};
                     data.forEach(m => {
-                        if(!this.conversations[m.telefono_cliente]) {
-                            this.conversations[m.telefono_cliente] = { 
-                                lastMsg: '', date: '', unread: false, messages: [] 
-                            };
-                        }
-                        const chat = this.conversations[m.telefono_cliente];
-                        chat.messages.push(m);
-                        chat.lastMsg = m.contenido;
-                        chat.date = m.created_at;
-                        if(m.emisor === 'cliente' && !m.leido) chat.unread = true;
+                        if(!this.conversations[m.telefono_cliente]) this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
+                        this.conversations[m.telefono_cliente].msgs.push(m);
+                        this.conversations[m.telefono_cliente].last = m.contenido;
+                        if(m.emisor === 'cliente' && !m.leido) this.conversations[m.telefono_cliente].unread = true;
                     });
-                    this.renderInbox();
+                    this.renderList();
                 }
             },
-
-            subscribeInbox() {
-                if(this.channel) supabaseClient.removeChannel(this.channel);
-
-                this.channel = supabaseClient.channel('chat_admin')
-                .on('postgres_changes', 
-                { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `codigo_negocio=eq.${admin.code}` }, 
-                payload => {
-                    const msg = payload.new;
+            subscribe() {
+                supabaseClient.channel('chat_admin').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `codigo_negocio=eq.${admin.code}` }, payload => {
+                    const m = payload.new;
+                    if(!this.conversations[m.telefono_cliente]) this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
+                    this.conversations[m.telefono_cliente].msgs.push(m);
+                    this.conversations[m.telefono_cliente].last = m.contenido;
                     
-                    if(!this.conversations[msg.telefono_cliente]) {
-                        this.conversations[msg.telefono_cliente] = { messages: [], lastMsg: '', date: '', unread: false };
-                    }
-                    const chat = this.conversations[msg.telefono_cliente];
-                    chat.messages.push(msg);
-                    chat.lastMsg = msg.contenido;
-                    chat.date = msg.created_at;
-
-                    if(msg.emisor === 'cliente') {
-                         if(this.activePhone !== msg.telefono_cliente) {
-                             chat.unread = true;
-                             document.getElementById('msgNotify').style.display = 'inline';
-                             notifications.show('Nuevo Mensaje', `De: ${msg.telefono_cliente}`, 'mensaje');
-                         } else {
-                             // Si estamos en el chat, scroll
-                             this.renderBubble(msg);
-                             this.scrollToBottom();
-                         }
-                    } else {
-                        // Si soy yo el que envía (desde otro dispositivo o este mismo)
-                        if(this.activePhone === msg.telefono_cliente) {
-                             this.renderBubble(msg);
-                             this.scrollToBottom();
+                    if(m.emisor === 'cliente') {
+                        if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
+                        else { 
+                            this.conversations[m.telefono_cliente].unread = true; 
+                            document.getElementById('msgNotify').style.display = 'inline';
+                            notifications.show('Mensaje Nuevo', `De: ${m.telefono_cliente}`, 'mensaje');
                         }
-                    }
-                    this.renderInbox();
+                    } else if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
+                    
+                    this.renderList();
                 }).subscribe();
             },
-
-            renderInbox() {
+            renderList() {
                 const list = document.getElementById('inboxList'); list.innerHTML = '';
-                const phones = Object.keys(this.conversations).sort((a,b) => new Date(this.conversations[b].date) - new Date(this.conversations[a].date));
-                
-                if(phones.length === 0) { list.innerHTML = '<div style="padding:40px; text-align:center; color:#666;">No hay mensajes.</div>'; return; }
-                
-                phones.forEach(phone => {
+                Object.keys(this.conversations).forEach(phone => {
                     const chat = this.conversations[phone];
-                    const clientData = admin.data.find(r => r.telefono === phone);
-                    const clientName = clientData ? (clientData.nombre + ' ' + clientData.apellido) : phone;
-                    
-                    const div = document.createElement('div'); 
-                    div.className = `chat-item ${this.activePhone === phone ? 'active' : ''}`;
-                    
-                    div.innerHTML = `
-                        <div class="chat-info">
-                            <h4>${clientName}</h4>
-                            <p>${chat.lastMsg}</p>
-                        </div>
-                        <div style="text-align:right">
-                            <div style="font-size:0.7rem; color:#666;">
-                                ${new Date(chat.date).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
-                            </div>
-                            ${chat.unread ? '<div class="unread-dot"></div>' : ''}
-                        </div>`;
-                    
-                    div.onclick = () => this.openChat(phone);
+                    const div = document.createElement('div'); div.className = `chat-item ${this.activePhone === phone ? 'active' : ''}`;
+                    const client = admin.data.find(c => c.telefono === phone);
+                    const name = client ? `${client.nombre} ${client.apellido}` : phone;
+                    div.innerHTML = `<div style="font-weight:bold; color:white; margin-bottom:4px;">${name}</div><div style="color:#888; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${chat.last}</div>${chat.unread?'<div style="width:8px; height:8px; background:var(--accent); border-radius:50%; position:absolute; right:15px; top:25px;"></div>':''}`;
+                    div.onclick = () => this.open(phone, name);
                     list.appendChild(div);
                 });
             },
-            
-            openChat(phone) {
+            open(phone, name) {
                 this.activePhone = phone;
-                if(this.conversations[phone]) this.conversations[phone].unread = false;
+                this.conversations[phone].unread = false;
+                document.getElementById('msgNotify').style.display = 'none';
+                this.renderList();
                 
-                document.getElementById('msgNotify').style.display = 'none'; // Limpiar notif global simple
-                this.renderInbox();
+                const view = document.getElementById('adminChatView');
+                if(window.innerWidth <= 768) { view.classList.add('active'); document.getElementById('chatBackBtn').style.display = 'block'; }
                 
-                document.getElementById('adminChatView').classList.add('active');
-                
-                const clientData = admin.data.find(r => r.telefono === phone);
-                document.getElementById('chatActiveUser').textContent = clientData ? (clientData.nombre + ' ' + clientData.apellido) : phone;
-                
-                // Mostrar footer
+                document.getElementById('chatActiveUser').textContent = name;
                 document.getElementById('chatFooterInput').style.display = 'flex';
-
-                const body = document.getElementById('adminChatBody'); 
-                body.innerHTML = '';
-                
-                if(this.conversations[phone]) {
-                    this.conversations[phone].messages.forEach(m => this.renderBubble(m));
-                }
-                this.scrollToBottom();
+                const body = document.getElementById('adminChatBody'); body.innerHTML = '';
+                this.conversations[phone].msgs.forEach(m => this.renderBubble(m));
+                this.scroll();
             },
-            
-            closeMobile() { 
-                document.getElementById('adminChatView').classList.remove('active'); 
-                this.activePhone = null; 
-                setTimeout(()=>this.renderInbox(),300); 
+            closeMobile() {
+                document.getElementById('adminChatView').classList.remove('active');
+                this.activePhone = null;
             },
-            
-            renderBubble(msg) {
-                const div = document.createElement('div'); 
-                div.className = `msg-bubble ${msg.emisor}`; 
-                div.textContent = msg.contenido;
+            renderBubble(m) {
+                const div = document.createElement('div'); div.className = `msg-bubble ${m.emisor}`;
+                div.textContent = m.contenido;
                 document.getElementById('adminChatBody').appendChild(div);
             },
-            
             async send() {
-                if(!this.activePhone) return;
-                const input = document.getElementById('adminChatInput'); 
-                const text = input.value.trim(); 
-                if(!text) return;
-                
-                input.value = '';
-                
-                // INSERT DIRECTO (Ahora funcionará con los Policies)
-                await supabaseClient.from('mensajes').insert([{ 
-                    codigo_negocio: admin.code, 
-                    telefono_cliente: this.activePhone, 
-                    emisor: 'admin', 
-                    contenido: text, 
-                    leido: true 
-                }]);
+                const inp = document.getElementById('adminChatInput');
+                const txt = inp.value.trim();
+                if(!txt || !this.activePhone) return;
+                inp.value = '';
+                await supabaseClient.from('mensajes').insert([{ codigo_negocio: admin.code, telefono_cliente: this.activePhone, emisor: 'admin', contenido: txt, leido: true }]);
             },
-            
-            scrollToBottom() { 
-                const body = document.getElementById('adminChatBody'); 
-                setTimeout(() => body.scrollTop = body.scrollHeight, 100); 
-            }
+            scroll() { const b = document.getElementById('adminChatBody'); setTimeout(()=>b.scrollTop=b.scrollHeight,100); }
         };
 
         admin.init();
     </script>
 </body>
 </html>
-
