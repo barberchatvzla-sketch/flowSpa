@@ -88,17 +88,25 @@
             border-radius: 8px; color: white; font-size: 1rem; margin-bottom: 5px;
         }
         
+        /* Nueva clase para inputs pequeños dentro de las tarjetas de servicio */
+        .srv-edit-input {
+            background: transparent; border: none; border-bottom: 1px solid #444; 
+            color: white; width: 100%; padding: 4px 0; outline: none; font-size: 0.9rem;
+            transition: border-color 0.3s;
+        }
+        .srv-edit-input:focus { border-color: var(--accent); }
+        .srv-edit-price { color: var(--accent); font-weight: bold; }
+
         .services-list-config { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .srv-config-item { 
             background: #1a1a1a; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #333;
         }
         .srv-config-img { width: 100%; height: 100px; object-fit: cover; }
-        .srv-config-info { padding: 10px; }
-        .srv-config-name { font-size: 0.85rem; font-weight: bold; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .srv-config-price { font-size: 0.8rem; color: var(--accent); }
+        .srv-config-info { padding: 10px; display: flex; flex-direction: column; gap: 5px; }
+        
         .btn-delete-srv {
             position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: var(--danger);
-            border: none; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
+            border: none; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2;
         }
 
         .add-srv-box { 
@@ -242,6 +250,18 @@
             <div id="view-config" class="view-section">
                 
                 <div class="config-card">
+                    <h3>Enlace Público</h3>
+                    <p style="color:#666; font-size:0.9rem; margin-bottom:10px;">Comparte este link con tus clientes para que reserven:</p>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" class="form-input" id="publicLinkDisplay" readonly style="margin-bottom:0; cursor:text;">
+                        <button class="btn-primary" style="width:auto; aspect-ratio:1;" onclick="admin.copyLink()"><i class="ph ph-copy"></i></button>
+                    </div>
+                    <a href="#" id="openLinkBtn" target="_blank" style="display:block; margin-top:10px; color:var(--accent); text-decoration:none; font-size:0.9rem; display:flex; align-items:center; gap:5px;">
+                        Abrir página <i class="ph ph-arrow-square-out"></i>
+                    </a>
+                </div>
+
+                <div class="config-card">
                     <h3>Identidad del Negocio</h3>
                     <div class="form-group">
                         <label class="form-label">Nombre del Salón</label>
@@ -260,13 +280,15 @@
 
                 <div class="config-card">
                     <h3>Mis Servicios</h3>
+                    <p style="color:#666; font-size:0.85rem; margin-bottom:15px;">Puedes editar el nombre y el precio directamente aquí.</p>
+                    
                     <div class="services-list-config" id="cfgServicesList">
                         </div>
                     
                     <div class="add-srv-box">
                         <h4 style="font-size:1rem; margin-bottom:10px;">Agregar Nuevo Servicio</h4>
                         <input type="text" class="form-input" id="newSrvName" placeholder="Nombre (Ej: Manicure)">
-                        <input type="text" class="form-input" id="newSrvPrice" placeholder="Precio (Ej: $25) - Opcional">
+                        <input type="text" class="form-input" id="newSrvPrice" placeholder="Precio (Ej: $25)">
                         <input type="text" class="form-input" id="newSrvImg" placeholder="URL Imagen (Ej: https://...)">
                         <button class="btn-primary" onclick="admin.addService()">+ Agregar Servicio</button>
                     </div>
@@ -319,9 +341,9 @@
             nombre_encargada: 'Sofía Hernández',
             imagen_portada: 'https://i.ibb.co/67C1hcrb/1767558273844.png',
             servicios: [
-                { name: 'Corte y Secado', price: '', img: 'https://i.ibb.co/MDjWPmnP/1768612232066.png' },
-                { name: 'Color y Mechas', price: '', img: 'https://i.ibb.co/HfSxF2BS/1768649929059.png' },
-                { name: 'Manicure', price: '', img: 'https://i.ibb.co/HT95Xhqc/1768612130852.png' }
+                { name: 'Corte y Secado', price: '$20', img: 'https://i.ibb.co/MDjWPmnP/1768612232066.png' },
+                { name: 'Color y Mechas', price: '$50', img: 'https://i.ibb.co/HfSxF2BS/1768649929059.png' },
+                { name: 'Manicure', price: '$15', img: 'https://i.ibb.co/HT95Xhqc/1768612130852.png' }
             ]
         };
 
@@ -386,10 +408,20 @@
             },
 
             renderConfigForm() {
+                // 1. Mostrar Enlace Público
+                // Calcula la URL base (quita index.html si está presente) y agrega spa.html con el código
+                const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+                const publicUrl = `${baseUrl}spa.html?ref=${this.code}`;
+                
+                document.getElementById('publicLinkDisplay').value = publicUrl;
+                document.getElementById('openLinkBtn').href = publicUrl;
+
+                // 2. Llenar campos de texto
                 document.getElementById('cfgNombreSalon').value = this.currentConfig.nombre_salon;
                 document.getElementById('cfgEncargada').value = this.currentConfig.nombre_encargada;
                 document.getElementById('cfgPortada').value = this.currentConfig.imagen_portada;
                 
+                // 3. Renderizar Lista de Servicios (Editable)
                 const list = document.getElementById('cfgServicesList');
                 list.innerHTML = '';
                 this.currentConfig.servicios.forEach((srv, idx) => {
@@ -398,12 +430,31 @@
                         <button class="btn-delete-srv" onclick="admin.removeService(${idx})"><i class="ph ph-trash"></i></button>
                         <img src="${srv.img}" class="srv-config-img" onerror="this.src='https://via.placeholder.com/150'">
                         <div class="srv-config-info">
-                            <div class="srv-config-name">${srv.name}</div>
-                            <div class="srv-config-price">${srv.price || 'Sin precio'}</div>
+                            <input type="text" class="srv-edit-input" value="${srv.name}" 
+                                onchange="admin.updateServiceField(${idx}, 'name', this.value)" placeholder="Nombre">
+                            <input type="text" class="srv-edit-input srv-edit-price" value="${srv.price || ''}" 
+                                onchange="admin.updateServiceField(${idx}, 'price', this.value)" placeholder="Precio">
                         </div>
                     `;
                     list.appendChild(div);
                 });
+            },
+
+            // Copiar enlace al portapapeles
+            copyLink() {
+                const input = document.getElementById('publicLinkDisplay');
+                input.select();
+                input.setSelectionRange(0, 99999);
+                navigator.clipboard.writeText(input.value).then(() => {
+                    notifications.show('Enlace Copiado', 'Link listo para compartir.');
+                });
+            },
+
+            // Actualizar campos de servicio en tiempo real en la memoria local
+            updateServiceField(index, field, value) {
+                if(this.currentConfig.servicios[index]) {
+                    this.currentConfig.servicios[index][field] = value;
+                }
             },
 
             addService() {
@@ -434,7 +485,7 @@
             },
 
             async saveConfig() {
-                // Actualizar objeto local
+                // Actualizar objeto local con los datos generales
                 this.currentConfig.nombre_salon = document.getElementById('cfgNombreSalon').value;
                 this.currentConfig.nombre_encargada = document.getElementById('cfgEncargada').value;
                 this.currentConfig.imagen_portada = document.getElementById('cfgPortada').value;
