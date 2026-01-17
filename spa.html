@@ -44,11 +44,23 @@
             z-index: 10000; opacity: 1; transition: opacity 0.8s, visibility 0.8s; pointer-events: none;
         }
         #loading-screen.fade-out { opacity: 0; visibility: hidden; }
-        .loading-logo {
-            font-family: var(--font-serif); font-size: 4.5rem; font-weight: 700; line-height: 1;
-            margin-bottom: 40px; letter-spacing: -1px; color: var(--color-white);
+        
+        /* CAMBIO: Estilos ajustados para texto más largo */
+        .loading-text {
+            font-family: var(--font-serif); 
+            font-size: 1.5rem; /* Reducido para que quepa la frase */
+            font-weight: 400; 
+            letter-spacing: 2px; 
+            color: var(--color-white);
+            text-transform: uppercase;
+            animation: pulseText 2s infinite;
         }
-        .loading-logo span { color: var(--color-fuchsia); }
+        .loading-text span { color: var(--color-fuchsia); }
+        
+        @keyframes pulseText {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
 
         #cover-page {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
@@ -88,12 +100,15 @@
         }
         .brand-small { font-family: var(--font-serif); font-size: 1.4rem; font-weight: 700; }
         .brand-small span { color: var(--color-fuchsia); }
+        
         .btn-nav {
             background: transparent; border: 1px solid #EAEAEA; width: 40px; height: 40px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s;
+            position: relative; 
         }
-        .btn-nav:hover { background: var(--color-black); color: white; }
+        .btn-nav:hover { background: var(--color-black); color: white; border-color: var(--color-black); }
         .btn-nav.hidden { opacity: 0; pointer-events: none; }
+        
         .progress-container { width: 100%; height: 2px; background: #f0f0f0; }
         .progress-bar { height: 100%; background: var(--color-fuchsia); width: 0%; transition: width 0.6s; }
 
@@ -140,7 +155,7 @@
         @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
 
         /* --- CARDS & GRID --- */
-        .services-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; } /* Ajuste a 2 columnas para más servicios */
+        .services-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .service-card {
             background: white; border-radius: var(--radius-card); overflow: hidden; position: relative; height: 140px;
             cursor: pointer; box-shadow: var(--shadow-soft); transition: transform 0.4s;
@@ -191,66 +206,30 @@
         .modal-card { text-align: center; padding: 40px; background: white; border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
         .success-check { width: 80px; height: 80px; background: var(--color-black); color: var(--color-fuchsia); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 25px auto; }
 
-        /* --- CHAT CLIENTE STYLES --- */
-        #chat-fab-container {
-            position: fixed; bottom: 30px; right: 30px; z-index: 500;
-            display: none; /* Se activa con JS */
+        /* --- CHAT STYLES --- */
+        .chat-badge {
+            position: absolute; top: 7px; right: 7px; width: 10px; height: 10px;
+            background-color: var(--color-fuchsia); border-radius: 50%; border: 2px solid white;
+            display: none; box-shadow: 0 0 5px var(--color-fuchsia);
         }
-        
-        #chat-fab {
-            width: 65px; height: 65px;
-            border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.25); cursor: pointer;
-            overflow: hidden; border: 3px solid white; background: #000;
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-        }
-        #chat-fab:hover { transform: scale(1.1); }
-        #chat-fab img { width: 100%; height: 100%; object-fit: cover; }
-        
-        /* Notificación Flotante "Nuevo Mensaje" */
-        .chat-notify-bubble {
-            position: absolute; top: -5px; right: 55px; 
-            background: var(--color-fuchsia); color: white;
-            padding: 8px 14px; border-radius: 20px; border-bottom-right-radius: 4px;
-            font-size: 0.8rem; font-weight: 700; white-space: nowrap;
-            box-shadow: 0 5px 15px rgba(224,0,224,0.4);
-            animation: floatBubble 3s ease-in-out infinite;
-            display: flex; align-items: center; gap: 5px;
-            pointer-events: none; /* Clic a través de ella */
-        }
-        @keyframes floatBubble {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
+        .chat-badge.active { display: block; animation: pulseBadge 2s infinite; }
+        @keyframes pulseBadge { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(224, 0, 224, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(224, 0, 224, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(224, 0, 224, 0); } }
 
-        /* Panel Deslizante iOS */
         #chat-drawer {
             position: fixed; top: 0; right: 0; width: 100%; height: 100%; max-width: 450px;
             background: #fff; z-index: 10000; transform: translateX(100%);
-            transition: transform 0.5s cubic-bezier(0.32, 1, 0.23, 1); /* Curva iOS */
+            transition: transform 0.5s cubic-bezier(0.32, 1, 0.23, 1);
             display: flex; flex-direction: column; box-shadow: -10px 0 40px rgba(0,0,0,0.1);
         }
         #chat-drawer.open { transform: translateX(0); }
 
-        .chat-header {
-            padding: 20px; background: white; border-bottom: 1px solid #f0f0f0;
-            display: flex; align-items: center; justify-content: space-between;
-            padding-top: max(20px, env(safe-area-inset-top));
-        }
-        .chat-body {
-            flex: 1; padding: 20px; overflow-y: auto; background: var(--color-gray-bg);
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .chat-footer {
-            padding: 15px; background: white; border-top: 1px solid #f0f0f0; display: flex; gap: 10px;
-            padding-bottom: max(15px, env(safe-area-inset-bottom));
-        }
+        .chat-header { padding: 20px; background: white; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; padding-top: max(20px, env(safe-area-inset-top)); }
+        .chat-body { flex: 1; padding: 20px; overflow-y: auto; background: var(--color-gray-bg); display: flex; flex-direction: column; gap: 10px; }
+        .chat-footer { padding: 15px; background: white; border-top: 1px solid #f0f0f0; display: flex; gap: 10px; padding-bottom: max(15px, env(safe-area-inset-bottom)); }
 
-        /* Burbujas de Chat */
         .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; position: relative; animation: fadeIn 0.3s ease; }
         .msg.me { align-self: flex-end; background: var(--color-black); color: white; border-bottom-right-radius: 4px; }
         .msg.admin { align-self: flex-start; background: white; color: black; border: 1px solid #eee; border-bottom-left-radius: 4px; }
-        
         .chat-input { flex: 1; padding: 12px 20px; border-radius: 30px; border: 1px solid #ddd; background: #f9f9f9; outline: none; font-size: 1rem; }
         .send-btn { width: 45px; height: 45px; background: var(--color-fuchsia); border-radius: 50%; border: none; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
@@ -259,7 +238,7 @@
 <body>
 
     <div id="loading-screen">
-        <div class="loading-logo">GLOW<span>.</span></div>
+        <div class="loading-text">CARGANDO PÁGINA<span>...</span></div>
     </div>
 
     <div id="cover-page">
@@ -273,9 +252,16 @@
 
     <div id="app-frame">
         <header class="app-header">
-            <button class="btn-nav hidden" id="prevBtn" onclick="app.prevStep()"><i class="ph ph-caret-left"></i></button>
+            <button class="btn-nav hidden" id="prevBtn" onclick="app.prevStep()">
+                <i class="ph ph-caret-left"></i>
+            </button>
+            
             <div class="brand-small">GLOW<span>.</span></div>
-            <div style="width: 40px;"></div>
+            
+            <button class="btn-nav hidden" id="headerChatBtn" onclick="chatApp.toggle()">
+                <i class="ph ph-chat-circle-dots" style="font-size: 1.5rem;"></i>
+                <span id="chatBadge" class="chat-badge"></span>
+            </button>
         </header>
 
         <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
@@ -395,15 +381,6 @@
         </div>
     </div>
 
-    <div id="chat-fab-container">
-        <div class="chat-notify-bubble">
-            <i class="ph ph-chat-circle-dots"></i> 1 Nuevo Mensaje
-        </div>
-        <div id="chat-fab" onclick="chatApp.toggle()">
-            <img src="https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png" alt="Chat">
-        </div>
-    </div>
-
     <div id="chat-drawer">
         <header class="chat-header">
             <h2 style="font-family: var(--font-serif); font-size: 1.5rem;">Soporte Glow</h2>
@@ -422,29 +399,52 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN SUPABASE
         const SUPABASE_URL = 'https://luwcggpjvsrhvdwjiarw.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1d2NnZ3BqdnNyaHZkd2ppYXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NjE4NTcsImV4cCI6MjA4MzIzNzg1N30.L_Yl3cVXdvLGcz3VZD-icJXAE4_myxqGo6o5dAkKw0M';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const urlParams = new URLSearchParams(window.location.search);
         const BUSINESS_CODE = urlParams.get('ref') || 'DEMO';
-        
-        // CLAVE PARA LOCALSTORAGE
         const STORAGE_KEY = 'glow_spa_phone_cache';
 
-        // --- CARGA DE RECURSOS ---
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                document.getElementById('loading-screen').classList.add('fade-out');
-                document.body.classList.add('resources-loaded');
-            }, 1000);
-            app.init();
+        // --- CARGA DE RECURSOS (MODIFICADO) ---
+        // Esperamos a que todo (imágenes, scripts, CSS) esté listo
+        document.addEventListener('DOMContentLoaded', async () => {
+            app.init(); // Inicializamos lógica básica mientras cargan imágenes
+            
+            // 1. Array con todas las imágenes IMG del DOM
+            const imgElements = Array.from(document.querySelectorAll('img'));
+            
+            // 2. Pre-cargar imagen de fondo del cover (importante)
+            const bgImage = new Image();
+            bgImage.src = 'https://i.ibb.co/67C1hcrb/1767558273844.png';
+            
+            // 3. Crear promesas para cada recurso
+            const resourcePromises = [
+                ...imgElements.map(img => {
+                    if (img.complete) return Promise.resolve();
+                    return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+                }),
+                new Promise(resolve => { 
+                    if(bgImage.complete) resolve();
+                    else { bgImage.onload = resolve; bgImage.onerror = resolve; }
+                })
+            ];
+
+            // 4. Fallback de seguridad: Si una imagen falla, quitar loader en 5 segs máximo
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
+
+            // Esperar a que terminen todas las cargas O pase el tiempo límite
+            await Promise.race([Promise.all(resourcePromises), timeoutPromise]);
+
+            // 5. Ocultar pantalla de carga
+            document.getElementById('loading-screen').classList.add('fade-out');
+            document.body.classList.add('resources-loaded');
         });
 
         function enterApp() { document.body.classList.add('app-active'); }
 
-        // --- CALENDARIO LOGIC ---
+        // --- CALENDARIO ---
         const calendar = {
             date: new Date(), selected: null,
             monthNames: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
@@ -473,7 +473,7 @@
             changeMonth(d) { this.date.setMonth(this.date.getMonth() + d); this.render(); }
         };
 
-        // --- APP LOGIC PRINCIPAL ---
+        // --- APP LOGIC ---
         const app = {
             step: 1, total: 5,
             data: { phone: '', name: '', surname: '', service: '', date: null, time: '' },
@@ -483,8 +483,6 @@
                 calendar.init(); 
                 this.generateTimeSlots(); 
                 chatApp.init(); 
-
-                // --- NUEVA LÓGICA DE PERSISTENCIA ---
                 const cachedPhone = localStorage.getItem(STORAGE_KEY);
                 if(cachedPhone) {
                     document.getElementById('inputPhone').value = cachedPhone;
@@ -492,7 +490,6 @@
                 }
             },
 
-            // LOGICA AUTOMÁTICA DEL TELÉFONO
             checkPhoneInput(input) {
                 input.value = input.value.replace(/[^0-9]/g, '');
                 if(input.value.length <11 ) {
@@ -501,63 +498,43 @@
                     return;
                 }
                 clearTimeout(this.checkTimer);
-                this.checkTimer = setTimeout(() => {
-                    this.verifyUser(input.value);
-                }, 800);
+                this.checkTimer = setTimeout(() => { this.verifyUser(input.value); }, 800);
             },
 
             async verifyUser(phone) {
                 const spinner = document.getElementById('phoneSpinner');
                 spinner.style.display = 'block';
 
-                const { data, error } = await supabaseClient
-                    .from('reservas')
-                    .select('nombre, apellido')
-                    .eq('telefono', phone)
-                    .order('created_at', { ascending: false })
-                    .limit(1);
+                const { data } = await supabaseClient
+                    .from('reservas').select('nombre, apellido')
+                    .eq('telefono', phone).order('created_at', { ascending: false }).limit(1);
 
                 spinner.style.display = 'none';
-
-                // --- GUARDAR EN CACHE PERSISTENTE ---
                 localStorage.setItem(STORAGE_KEY, phone);
                 this.data.phone = phone;
 
                 if(data && data.length > 0) {
-                    // --- USUARIO ENCONTRADO ---
                     const user = data[0];
                     this.data.name = user.nombre;
                     this.data.surname = user.apellido;
-                    
                     chatApp.enable();
-
                     const welcomeMsg = document.getElementById('welcome-overlay');
                     document.getElementById('welcome-text').innerHTML = `Hola, espero que estés bien.<br>Bienvenida de nuevo, <b>${user.nombre} ${user.apellido}</b>`;
                     welcomeMsg.style.display = 'flex'; 
-
                     document.getElementById('actionBar').style.display = 'none';
-
                     setTimeout(() => {
                         welcomeMsg.style.display = 'none';
-                        this.step = 2; // Salta al paso 2
-                        this.updateUI();
+                        this.step = 2; this.updateUI();
                     }, 2500);
-
                 } else {
-                    // --- USUARIO NUEVO ---
                     document.getElementById('new-user-fields').classList.add('visible');
                     document.getElementById('actionBar').style.display = 'block'; 
                     document.getElementById('inputName').focus();
-                    
                     chatApp.enable();
                 }
             },
 
-            // --- NUEVA FUNCIÓN PARA BORRAR CACHE (LOGOUT) ---
-            logout() {
-                localStorage.removeItem(STORAGE_KEY); // Borra el dato
-                location.reload(); // Recarga la página para volver al inicio
-            },
+            logout() { localStorage.removeItem(STORAGE_KEY); location.reload(); },
 
             nextStep() {
                 if(!this.validate()) return;
@@ -565,9 +542,7 @@
                 this.step++; this.updateUI();
             },
             
-            prevStep() { 
-                if(this.step > 1) { this.step--; this.updateUI(); } 
-            },
+            prevStep() { if(this.step > 1) { this.step--; this.updateUI(); } },
 
             validate() {
                 if(this.step === 1) {
@@ -576,8 +551,6 @@
                     if(nameField.offsetParent !== null) { 
                         this.data.name = nameField.value.trim();
                         this.data.surname = document.getElementById('inputSurname').value.trim();
-                        this.data.name = this.capitalize(this.data.name);
-                        this.data.surname = this.capitalize(this.data.surname);
                         if(!this.data.name || !this.data.surname) { this.shakeBtn(); return false; }
                     }
                     if(!this.data.phone) { this.shakeBtn(); return false; }
@@ -588,8 +561,6 @@
                 if(this.step === 3) this.data.date = calendar.selected;
                 return true;
             },
-
-            capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase(); },
 
             selectService(el, name) {
                 document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
@@ -613,26 +584,16 @@
 
             updateUI() {
                 document.getElementById('progressBar').style.width = ((this.step - 1) / (this.total - 1)) * 100 + '%';
-                document.querySelectorAll('.step').forEach((el, idx) => {
-                    el.classList.toggle('active', idx + 1 === this.step);
-                });
+                document.querySelectorAll('.step').forEach((el, idx) => el.classList.toggle('active', idx + 1 === this.step));
                 document.getElementById('prevBtn').classList.toggle('hidden', this.step === 1);
                 const bar = document.getElementById('actionBar');
                 const btn = document.getElementById('mainBtn');
 
-                if(this.step === 1) {
-                    if(!document.getElementById('new-user-fields').classList.contains('visible')){
-                        bar.style.display = 'none';
-                    }
-                } else if([2,3,4].includes(this.step)) {
-                    bar.style.display = 'none'; 
-                } else {
-                    bar.style.display = 'block'; 
-                }
+                if(this.step === 1 && !document.getElementById('new-user-fields').classList.contains('visible')) bar.style.display = 'none';
+                else if([2,3,4].includes(this.step)) bar.style.display = 'none'; 
+                else bar.style.display = 'block'; 
 
-                if(this.step === 2) {
-                    document.getElementById('serviceHeader').textContent = `Hola, ${this.data.name}`;
-                }
+                if(this.step === 2) document.getElementById('serviceHeader').textContent = `Hola, ${this.data.name}`;
 
                 if(this.step === 5) {
                     btn.textContent = 'Confirmar Reserva';
@@ -654,19 +615,14 @@
                 try {
                     const { error } = await supabaseClient.from('reservas').insert([{
                         codigo_negocio: BUSINESS_CODE,
-                        nombre: this.data.name,
-                        apellido: this.data.surname,
-                        telefono: this.data.phone,
-                        servicio: this.data.service,
-                        fecha: this.data.date.toISOString().split('T')[0],
-                        hora: this.data.time,
-                        estado: 'pendiente'
+                        nombre: this.data.name, apellido: this.data.surname, telefono: this.data.phone,
+                        servicio: this.data.service, fecha: this.data.date.toISOString().split('T')[0],
+                        hora: this.data.time, estado: 'pendiente'
                     }]);
                     if(error) throw error;
                     document.getElementById('successModal').classList.add('active');
                 } catch(err) {
-                    console.error(err);
-                    alert("Error al guardar.");
+                    console.error(err); alert("Error al guardar.");
                     btn.innerHTML = 'Reintentar'; btn.disabled = false;
                 }
             },
@@ -678,107 +634,70 @@
             }
         };
 
-        /* --- LOGICA DEL CHAT (Cliente) --- */
+        // --- CHAT LOGIC ---
         const chatApp = {
-            isOpen: false,
-            subscription: null,
-            
-            init() {
-                // Ya no cargamos logo dinámico, usamos el fijo del HTML
-            },
-
+            isOpen: false, subscription: null,
+            init() { },
             enable() {
-                document.getElementById('chat-fab-container').style.display = 'block';
-                this.subscribe();
-                this.loadMessages();
+                const btn = document.getElementById('headerChatBtn');
+                if(btn) { btn.classList.remove('hidden'); btn.style.cursor = 'pointer'; }
+                this.subscribe(); this.loadMessages();
             },
-
             toggle() {
                 this.isOpen = !this.isOpen;
                 document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
                 if(this.isOpen) {
-                    // Ocultar burbuja de notificación al abrir
-                    document.querySelector('.chat-notify-bubble').style.opacity = '0';
+                    document.getElementById('chatBadge').classList.remove('active');
                     this.scrollToBottom();
                 }
             },
-
             async loadMessages() {
                 if(!app.data.phone) return;
-                const { data, error } = await supabaseClient
-                    .from('mensajes')
-                    .select('*')
-                    .eq('codigo_negocio', BUSINESS_CODE)
-                    .eq('telefono_cliente', app.data.phone)
+                const { data } = await supabaseClient.from('mensajes').select('*')
+                    .eq('codigo_negocio', BUSINESS_CODE).eq('telefono_cliente', app.data.phone)
                     .order('created_at', { ascending: true });
-
                 const container = document.getElementById('chatContainer');
-                
-                // Guardar el mensaje de bienvenida
                 const welcomeMsg = document.getElementById('welcomeMsg');
-                container.innerHTML = ''; // Limpiar
-                if(welcomeMsg) container.appendChild(welcomeMsg); // Volver a poner el mensaje fijo
-
-                if(data) {
-                    data.forEach(msg => this.renderMessage(msg));
-                    this.scrollToBottom();
-                }
+                container.innerHTML = ''; 
+                if(welcomeMsg) container.appendChild(welcomeMsg); 
+                if(data) { data.forEach(msg => this.renderMessage(msg)); this.scrollToBottom(); }
             },
-
             subscribe() {
                 if(this.subscription) return;
-                this.subscription = supabaseClient
-                    .channel('chat_cliente')
+                this.subscription = supabaseClient.channel('chat_cliente')
                     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `telefono_cliente=eq.${app.data.phone}` }, 
                     payload => {
                         this.renderMessage(payload.new);
                         if(!this.isOpen && payload.new.emisor === 'admin') {
-                            document.querySelector('.chat-notify-bubble').style.opacity = '1';
-                        } else {
-                            this.scrollToBottom();
-                        }
-                    })
-                    .subscribe();
+                            document.getElementById('chatBadge').classList.add('active');
+                            if(navigator.vibrate) navigator.vibrate(50);
+                        } else { this.scrollToBottom(); }
+                    }).subscribe();
             },
-
             renderMessage(msg) {
                 const div = document.createElement('div');
                 div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
-                div.textContent = msg.contenido;
+                div.textContent = msg.contenido; 
                 document.getElementById('chatContainer').appendChild(div);
             },
-
+            handleEnter(e) { if(e.key === 'Enter') this.send(); },
             async send() {
                 const input = document.getElementById('chatInput');
                 const text = input.value.trim();
                 if(!text) return;
-
                 input.value = '';
-
-                // Insertar mensaje en Supabase
-                const { error } = await supabaseClient.from('mensajes').insert([{
-                    codigo_negocio: BUSINESS_CODE,
-                    telefono_cliente: app.data.phone,
-                    emisor: 'cliente',
-                    contenido: text,
-                    leido: false
+                this.renderMessage({ emisor: 'cliente', contenido: text });
+                this.scrollToBottom();
+                await supabaseClient.from('mensajes').insert([{
+                    codigo_negocio: BUSINESS_CODE, telefono_cliente: app.data.phone,
+                    emisor: 'cliente', contenido: text, leido: false
                 }]);
-
-                if(error) console.error('Error enviando mensaje:', error);
-                
-                // El real-time se encargará de mostrarlo en pantalla
             },
-
-            handleEnter(event) {
-                if(event.key === 'Enter') this.send();
-            },
-
             scrollToBottom() {
                 const container = document.getElementById('chatContainer');
-                setTimeout(() => container.scrollTop = container.scrollHeight, 100);
+                setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
             }
         };
-
     </script>
 </body>
 </html>
