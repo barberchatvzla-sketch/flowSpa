@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
@@ -53,7 +52,6 @@
 
         #cover-page {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
-            /* IMAGEN ACTUALIZADA AQUI */
             background-image: url('https://i.ibb.co/67C1hcrb/1767558273844.png');
             background-size: cover; background-position: center; z-index: 9999;
             display: flex; flex-direction: column; justify-content: flex-end;
@@ -142,17 +140,18 @@
         @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
 
         /* --- CARDS & GRID --- */
-        .services-grid { display: grid; gap: 20px; }
+        .services-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; } /* Ajuste a 2 columnas para más servicios */
         .service-card {
-            background: white; border-radius: var(--radius-card); overflow: hidden; position: relative; height: 160px;
+            background: white; border-radius: var(--radius-card); overflow: hidden; position: relative; height: 140px;
             cursor: pointer; box-shadow: var(--shadow-soft); transition: transform 0.4s;
         }
         .service-card img { width: 100%; height: 100%; object-fit: cover; }
         .service-overlay {
-            position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-            padding: 20px; color: white;
+            position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+            padding: 15px; color: white; display: flex; align-items: flex-end; height: 100%;
         }
-        .service-card.selected { border: 2px solid var(--color-fuchsia); }
+        .service-name { font-size: 0.9rem; font-weight: 600; line-height: 1.2; }
+        .service-card.selected { border: 3px solid var(--color-fuchsia); transform: scale(0.98); }
 
         /* --- CALENDAR & TIME --- */
         .calendar-wrapper { background: white; border-radius: var(--radius-card); padding: 15px; box-shadow: var(--shadow-soft); }
@@ -193,18 +192,35 @@
         .success-check { width: 80px; height: 80px; background: var(--color-black); color: var(--color-fuchsia); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 25px auto; }
 
         /* --- CHAT CLIENTE STYLES --- */
+        #chat-fab-container {
+            position: fixed; bottom: 30px; right: 30px; z-index: 500;
+            display: none; /* Se activa con JS */
+        }
+        
         #chat-fab {
-            position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px;
-            border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); cursor: pointer;
-            z-index: 500; display: none; overflow: hidden; border: 3px solid white;
+            width: 65px; height: 65px;
+            border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.25); cursor: pointer;
+            overflow: hidden; border: 3px solid white; background: #000;
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            background: #000;
+            position: relative;
         }
         #chat-fab:hover { transform: scale(1.1); }
         #chat-fab img { width: 100%; height: 100%; object-fit: cover; }
-        #chat-fab .badge {
-            position: absolute; top: 0; right: 0; background: var(--color-fuchsia); width: 15px; height: 15px;
-            border-radius: 50%; border: 2px solid white; display: none;
+        
+        /* Notificación Flotante "Nuevo Mensaje" */
+        .chat-notify-bubble {
+            position: absolute; top: -5px; right: 55px; 
+            background: var(--color-fuchsia); color: white;
+            padding: 8px 14px; border-radius: 20px; border-bottom-right-radius: 4px;
+            font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+            box-shadow: 0 5px 15px rgba(224,0,224,0.4);
+            animation: floatBubble 3s ease-in-out infinite;
+            display: flex; align-items: center; gap: 5px;
+            pointer-events: none; /* Clic a través de ella */
+        }
+        @keyframes floatBubble {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
         }
 
         /* Panel Deslizante iOS */
@@ -234,6 +250,7 @@
         .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; position: relative; animation: fadeIn 0.3s ease; }
         .msg.me { align-self: flex-end; background: var(--color-black); color: white; border-bottom-right-radius: 4px; }
         .msg.admin { align-self: flex-start; background: white; color: black; border: 1px solid #eee; border-bottom-left-radius: 4px; }
+        
         .chat-input { flex: 1; padding: 12px 20px; border-radius: 30px; border: 1px solid #ddd; background: #f9f9f9; outline: none; font-size: 1rem; }
         .send-btn { width: 45px; height: 45px; background: var(--color-fuchsia); border-radius: 50%; border: none; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
@@ -297,20 +314,39 @@
                     <button onclick="app.logout()" style="border:none; background:transparent; font-size:0.85rem; color:#999; text-decoration:underline; cursor:pointer;">Cambiar</button>
                 </div>
                 <p class="subtitle">Selecciona tu tratamiento exclusivo.</p>
+                
                 <div class="services-grid">
-                    <div class="service-card" onclick="app.selectService(this, 'Royal Cut & Style')">
-                        <img src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?q=80&w=800&auto=format&fit=crop">
-                        <div class="service-overlay"><span class="service-name">Royal Cut</span></div>
+                    <div class="service-card" onclick="app.selectService(this, 'Corte y Secado')">
+                        <img src="https://i.ibb.co/MDjWPmnP/1768612232066.png" alt="Corte y Secado">
+                        <div class="service-overlay"><span class="service-name">Corte y Secado</span></div>
                     </div>
-                    <div class="service-card" onclick="app.selectService(this, 'Color Therapy')">
-                        <img src="https://images.unsplash.com/photo-1620331317312-74b88bf40907?q=80&w=800&auto=format&fit=crop">
-                        <div class="service-overlay"><span class="service-name">Color Therapy</span></div>
+                    
+                    <div class="service-card" onclick="app.selectService(this, 'Color y Mechas')">
+                        <img src="https://i.ibb.co/HfSxF2BS/1768649929059.png" alt="Color y Mechas">
+                        <div class="service-overlay"><span class="service-name">Color y Mechas</span></div>
                     </div>
-                    <div class="service-card" onclick="app.selectService(this, 'Signature Spa')">
-                        <img src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=800&auto=format&fit=crop">
-                        <div class="service-overlay"><span class="service-name">Signature Spa</span></div>
+
+                    <div class="service-card" onclick="app.selectService(this, 'Manicure y Pedicure')">
+                        <img src="https://i.ibb.co/HT95Xhqc/1768612130852.png" alt="Manicure y Pedicure">
+                        <div class="service-overlay"><span class="service-name">Manicure y Pedicure</span></div>
+                    </div>
+
+                    <div class="service-card" onclick="app.selectService(this, 'Cirugía Capilar')">
+                        <img src="https://i.ibb.co/FLRN7LdK/1768649571836.png" alt="Cirugía Capilar y Keratina">
+                        <div class="service-overlay"><span class="service-name">Cirugía Capilar / Keratina</span></div>
+                    </div>
+                    
+                    <div class="service-card" onclick="app.selectService(this, 'Diseño de Cejas')">
+                        <img src="https://i.ibb.co/23xrHfKw/1768612010749.png" alt="Diseño de Cejas">
+                        <div class="service-overlay"><span class="service-name">Diseño de Cejas</span></div>
+                    </div>
+
+                    <div class="service-card" onclick="app.selectService(this, 'Maquillaje Profesional')">
+                        <img src="https://i.ibb.co/twy3kZ7F/1768650111315.png" alt="Maquillaje Profesional">
+                        <div class="service-overlay"><span class="service-name">Maquillaje Profesional</span></div>
                     </div>
                 </div>
+
             </div>
 
             <div class="step" id="step-3">
@@ -359,19 +395,24 @@
         </div>
     </div>
 
-    <div id="chat-fab" onclick="chatApp.toggle()">
-        <img id="chatLogoImg" src="" alt="Chat">
-        <div class="badge" id="chatBadge"></div>
+    <div id="chat-fab-container">
+        <div class="chat-notify-bubble">
+            <i class="ph ph-chat-circle-dots"></i> 1 Nuevo Mensaje
+        </div>
+        <div id="chat-fab" onclick="chatApp.toggle()">
+            <img src="https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png" alt="Chat">
+        </div>
     </div>
 
     <div id="chat-drawer">
         <header class="chat-header">
-            <h2 style="font-family: var(--font-serif); font-size: 1.5rem;">Soporte</h2>
+            <h2 style="font-family: var(--font-serif); font-size: 1.5rem;">Soporte Glow</h2>
             <button class="btn-nav" onclick="chatApp.toggle()" style="border:none;"><i class="ph ph-x"></i></button>
         </header>
         <div class="chat-body" id="chatContainer">
-            <div style="text-align:center; color:#999; font-size:0.9rem; margin-top:20px;">
-                Inicia una conversación con nosotros.
+            <div class="msg admin" id="welcomeMsg" style="margin-bottom: 20px;">
+                <b style="color:var(--color-fuchsia)">Sofía Hernández</b><br>
+                Hola 👋, soy Sofía. ¿En qué te puedo ayudar? Puedes escribir lo que desees por este medio.
             </div>
         </div>
         <div class="chat-footer">
@@ -446,10 +487,7 @@
                 // --- NUEVA LÓGICA DE PERSISTENCIA ---
                 const cachedPhone = localStorage.getItem(STORAGE_KEY);
                 if(cachedPhone) {
-                    console.log("Sesión recuperada:", cachedPhone);
-                    // Llenamos el input visualmente por si acaso
                     document.getElementById('inputPhone').value = cachedPhone;
-                    // Forzamos la verificación inmediata
                     this.verifyUser(cachedPhone);
                 }
             },
@@ -646,20 +684,11 @@
             subscription: null,
             
             init() {
-                this.loadLogo();
-            },
-
-            async loadLogo() {
-                const { data } = await supabaseClient.from('negocios_config').select('chat_logo_url').eq('codigo', BUSINESS_CODE).single();
-                if(data && data.chat_logo_url) {
-                    document.getElementById('chatLogoImg').src = data.chat_logo_url;
-                } else {
-                    document.getElementById('chatLogoImg').src = "https://ui-avatars.com/api/?name=Glow+Spa&background=000&color=fff";
-                }
+                // Ya no cargamos logo dinámico, usamos el fijo del HTML
             },
 
             enable() {
-                document.getElementById('chat-fab').style.display = 'block';
+                document.getElementById('chat-fab-container').style.display = 'block';
                 this.subscribe();
                 this.loadMessages();
             },
@@ -668,7 +697,8 @@
                 this.isOpen = !this.isOpen;
                 document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
                 if(this.isOpen) {
-                    document.getElementById('chatBadge').style.display = 'none';
+                    // Ocultar burbuja de notificación al abrir
+                    document.querySelector('.chat-notify-bubble').style.opacity = '0';
                     this.scrollToBottom();
                 }
             },
@@ -682,9 +712,14 @@
                     .eq('telefono_cliente', app.data.phone)
                     .order('created_at', { ascending: true });
 
+                const container = document.getElementById('chatContainer');
+                
+                // Guardar el mensaje de bienvenida
+                const welcomeMsg = document.getElementById('welcomeMsg');
+                container.innerHTML = ''; // Limpiar
+                if(welcomeMsg) container.appendChild(welcomeMsg); // Volver a poner el mensaje fijo
+
                 if(data) {
-                    const container = document.getElementById('chatContainer');
-                    container.innerHTML = '';
                     data.forEach(msg => this.renderMessage(msg));
                     this.scrollToBottom();
                 }
@@ -698,12 +733,19 @@
                     payload => {
                         this.renderMessage(payload.new);
                         if(!this.isOpen && payload.new.emisor === 'admin') {
-                            document.getElementById('chatBadge').style.display = 'block';
+                            document.querySelector('.chat-notify-bubble').style.opacity = '1';
                         } else {
                             this.scrollToBottom();
                         }
                     })
                     .subscribe();
+            },
+
+            renderMessage(msg) {
+                const div = document.createElement('div');
+                div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
+                div.textContent = msg.contenido;
+                document.getElementById('chatContainer').appendChild(div);
             },
 
             async send() {
@@ -712,30 +754,31 @@
                 if(!text) return;
 
                 input.value = '';
-                
-                await supabaseClient.from('mensajes').insert([{
+
+                // Insertar mensaje en Supabase
+                const { error } = await supabaseClient.from('mensajes').insert([{
                     codigo_negocio: BUSINESS_CODE,
                     telefono_cliente: app.data.phone,
                     emisor: 'cliente',
-                    contenido: text
+                    contenido: text,
+                    leido: false
                 }]);
+
+                if(error) console.error('Error enviando mensaje:', error);
+                
+                // El real-time se encargará de mostrarlo en pantalla
             },
 
-            renderMessage(msg) {
-                const container = document.getElementById('chatContainer');
-                const div = document.createElement('div');
-                div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
-                div.textContent = msg.contenido;
-                container.appendChild(div);
+            handleEnter(event) {
+                if(event.key === 'Enter') this.send();
             },
 
             scrollToBottom() {
                 const container = document.getElementById('chatContainer');
                 setTimeout(() => container.scrollTop = container.scrollHeight, 100);
-            },
-            
-            handleEnter(e) { if(e.key === 'Enter') this.send(); }
+            }
         };
+
     </script>
 </body>
 </html>
