@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
     <title>Reserva tu Cita</title>
+    
+    <link rel="manifest" id="my-dynamic-manifest">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +16,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
-        /* --- VARIABLES & RESET --- */
+        /* --- TUS ESTILOS ORIGINALES (Sin cambios mayores) --- */
         :root {
             --color-black: #050505;
             --color-white: #ffffff;
@@ -55,7 +58,7 @@
             background-size: cover; background-position: center; z-index: 9999;
             display: flex; flex-direction: column; justify-content: flex-end;
             transition: opacity 0.8s, visibility 0.8s; opacity: 0; visibility: hidden;
-            background-color: #111; /* Fallback */
+            background-color: #111;
         }
         body.resources-loaded #cover-page { opacity: 1; visibility: visible; }
         body.app-active #cover-page { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -67,7 +70,18 @@
         .cover-content { position: relative; z-index: 2; margin-bottom: 60px; padding: 0 40px; text-align: center; color: white; }
         .brand-large { font-family: var(--font-serif); font-size: 4rem; margin-bottom: 10px; line-height: 1.1; }
         .brand-large span { color: var(--color-fuchsia); }
-        .cover-subtitle { font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 50px; opacity: 0.9; }
+        .cover-subtitle { font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 30px; opacity: 0.9; }
+
+        /* Estilo Botón Instalar PWA */
+        #install-pwa-btn {
+            display: none; /* Se oculta por defecto hasta que sea instalable */
+            background: rgba(255,255,255,0.15); 
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white; padding: 12px 25px; border-radius: 50px;
+            margin-bottom: 20px; font-size: 0.9rem; cursor: pointer;
+            align-items: center; gap: 8px; width: 100%; justify-content: center;
+        }
 
         /* --- APP FRAME --- */
         #app-frame {
@@ -244,6 +258,11 @@
         <div class="cover-content">
             <h1 class="brand-large" id="coverTitle">GLOW<span>.</span></h1>
             <p class="cover-subtitle">Experiencias de Lujo & Bienestar</p>
+            
+            <button id="install-pwa-btn" onclick="app.installPWA()">
+                <i class="ph ph-download-simple"></i> Instalar App del Salón
+            </button>
+
             <button class="btn-styled" style="background: white; color: black;" onclick="enterApp()">Reservar Ahora</button>
         </div>
     </div>
@@ -372,45 +391,52 @@
         const BUSINESS_CODE = urlParams.get('ref') || 'DEMO';
         const STORAGE_KEY = `glow_spa_phone_${BUSINESS_CODE}`;
 
-        // DATOS POR DEFECTO (SI NO HAY CONFIGURACIÓN EN DB)
+        // DEFAULT DATA
         const DEFAULT_CONFIG = {
             nombre_salon: 'GLOW',
             nombre_encargada: 'Sofía Hernández',
             imagen_portada: 'https://i.ibb.co/67C1hcrb/1767558273844.png',
+            logo_url: 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png', // Default Logo
             servicios: [
                 { name: 'Corte y Secado', price: '', img: 'https://i.ibb.co/MDjWPmnP/1768612232066.png' },
                 { name: 'Color y Mechas', price: '', img: 'https://i.ibb.co/HfSxF2BS/1768649929059.png' },
-                { name: 'Manicure y Pedicure', price: '', img: 'https://i.ibb.co/HT95Xhqc/1768612130852.png' },
-                { name: 'Cirugía Capilar', price: '', img: 'https://i.ibb.co/FLRN7LdK/1768649571836.png' },
-                { name: 'Diseño de Cejas', price: '', img: 'https://i.ibb.co/23xrHfKw/1768612010749.png' },
-                { name: 'Maquillaje Profesional', price: '', img: 'https://i.ibb.co/twy3kZ7F/1768650111315.png' }
+                { name: 'Manicure y Pedicure', price: '', img: 'https://i.ibb.co/HT95Xhqc/1768612130852.png' }
             ]
         };
 
         let currentConfig = { ...DEFAULT_CONFIG };
+        let deferredPrompt; // Variable para guardar el evento de instalación
 
         // --- CARGA DE RECURSOS & CONFIG ---
         document.addEventListener('DOMContentLoaded', async () => {
-            // 1. Cargar Configuración del Negocio
             await app.loadBusinessConfig();
-
-            // 2. Renderizar UI Inicial
             app.renderCover();
             app.renderServices();
+            
+            // Register SW for PWA
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').then(reg => console.log('SW Registered!', reg));
+            }
 
-            // 3. Quitar Loading
+            // Escuchar evento de instalación
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                const btn = document.getElementById('install-pwa-btn');
+                btn.style.display = 'flex'; // Mostrar botón solo si es instalable
+            });
+
             setTimeout(() => {
                 document.getElementById('loading-screen').classList.add('fade-out');
                 document.body.classList.add('resources-loaded');
             }, 800);
 
-            // 4. Iniciar App
             app.init();
         });
 
         function enterApp() { document.body.classList.add('app-active'); }
 
-        // --- CALENDARIO LOGIC ---
+        // --- CALENDARIO LOGIC (Sin cambios) ---
         const calendar = {
             date: new Date(), selected: null,
             monthNames: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
@@ -439,14 +465,14 @@
             changeMonth(d) { this.date.setMonth(this.date.getMonth() + d); this.render(); }
         };
 
-        // --- APP LOGIC PRINCIPAL ---
+        // --- APP LOGIC ---
         const app = {
             step: 1, total: 5,
             data: { phone: '', name: '', surname: '', service: '', date: null, time: '' },
             checkTimer: null,
 
             async loadBusinessConfig() {
-                if(BUSINESS_CODE === 'DEMO') return; // Usar defaults
+                if(BUSINESS_CODE === 'DEMO') { this.injectManifest(); return; } 
 
                 try {
                     const { data, error } = await supabaseClient
@@ -459,22 +485,69 @@
                         currentConfig.nombre_salon = data.nombre_salon || DEFAULT_CONFIG.nombre_salon;
                         currentConfig.nombre_encargada = data.nombre_encargada || DEFAULT_CONFIG.nombre_encargada;
                         currentConfig.imagen_portada = data.imagen_portada || DEFAULT_CONFIG.imagen_portada;
+                        // Nota: Si agregas columna logo_url en DB, úsala aquí. Si no, usa el default.
+                        if(data.logo_url) currentConfig.logo_url = data.logo_url;
+
                         if(data.servicios && data.servicios.length > 0) {
                             currentConfig.servicios = data.servicios;
                         }
-                        // Actualizar logo texto si existe imagen sería otro cambio, por ahora usamos texto
                     }
                 } catch (e) { console.error("Error cargando config", e); }
+                
+                // GENERAR MANIFIESTO DINÁMICO
+                this.injectManifest();
+            },
+
+            injectManifest() {
+                // 1. Construir el objeto JSON del Manifiesto
+                // IMPORTANTE: start_url incluye el ref para que al abrir la app instalada
+                // sepa qué salón es.
+                const dynamicManifest = {
+                    "name": currentConfig.nombre_salon,
+                    "short_name": currentConfig.nombre_salon,
+                    "start_url": window.location.href, 
+                    "display": "standalone",
+                    "background_color": "#000000",
+                    "theme_color": "#000000",
+                    "icons": [
+                        {
+                            "src": currentConfig.logo_url, // URL del logo del salón
+                            "sizes": "192x192",
+                            "type": "image/png"
+                        },
+                        {
+                            "src": currentConfig.logo_url,
+                            "sizes": "512x512",
+                            "type": "image/png"
+                        }
+                    ]
+                };
+
+                // 2. Convertir a Blob URL
+                const stringManifest = JSON.stringify(dynamicManifest);
+                const blob = new Blob([stringManifest], {type: 'application/json'});
+                const manifestURL = URL.createObjectURL(blob);
+                
+                // 3. Inyectar en el HTML
+                document.querySelector('#my-dynamic-manifest').setAttribute('href', manifestURL);
+            },
+
+            async installPWA() {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                if(outcome === 'accepted') {
+                    document.getElementById('install-pwa-btn').style.display = 'none';
+                }
+                deferredPrompt = null;
             },
 
             renderCover() {
-                // Actualizar Textos
                 const titleHtml = `${currentConfig.nombre_salon}<span>.</span>`;
                 document.getElementById('coverTitle').innerHTML = titleHtml;
                 document.getElementById('headerTitle').innerHTML = titleHtml;
                 document.getElementById('loadingLogo').innerHTML = titleHtml;
-                
-                // Actualizar Fondo Portada
                 document.getElementById('cover-page').style.backgroundImage = `url('${currentConfig.imagen_portada}')`;
             },
 
@@ -485,10 +558,7 @@
                     const el = document.createElement('div');
                     el.className = 'service-card';
                     el.onclick = () => app.selectService(el, srv.name);
-                    
-                    // Manejo de precio opcional
                     const priceHtml = srv.price ? `<span class="service-price">${srv.price}</span>` : '';
-
                     el.innerHTML = `
                         <img src="${srv.img}" alt="${srv.name}" onerror="this.src='https://via.placeholder.com/300?text=Servicio'">
                         <div class="service-overlay">
@@ -565,10 +635,7 @@
                 }
             },
 
-            logout() {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
-            },
+            logout() { localStorage.removeItem(STORAGE_KEY); location.reload(); },
 
             nextStep() {
                 if(!this.validate()) return;
@@ -576,9 +643,7 @@
                 this.step++; this.updateUI();
             },
             
-            prevStep() { 
-                if(this.step > 1) { this.step--; this.updateUI(); } 
-            },
+            prevStep() { if(this.step > 1) { this.step--; this.updateUI(); } },
 
             validate() {
                 if(this.step === 1) {
@@ -691,111 +756,53 @@
 
         /* --- CHAT LOGIC --- */
         const chatApp = {
-            isOpen: false,
-            subscription: null,
-            
+            isOpen: false, subscription: null,
             init() { 
-                // Renderizar mensaje de bienvenida dinámico
                 const container = document.getElementById('chatContainer');
                 const welcomeDiv = document.createElement('div');
                 welcomeDiv.className = 'msg admin';
                 welcomeDiv.id = 'welcomeMsg';
                 welcomeDiv.style.marginBottom = '20px';
-                welcomeDiv.innerHTML = `
-                    <b style="color:var(--color-fuchsia)">${currentConfig.nombre_encargada}</b><br>
-                    Hola 👋, soy ${currentConfig.nombre_encargada.split(' ')[0]}. ¿En qué te puedo ayudar?
-                `;
+                welcomeDiv.innerHTML = `<b style="color:var(--color-fuchsia)">${currentConfig.nombre_encargada}</b><br>Hola 👋, soy ${currentConfig.nombre_encargada.split(' ')[0]}. ¿En qué te puedo ayudar?`;
                 container.appendChild(welcomeDiv);
             },
-
             enable() {
                 const btn = document.getElementById('headerChatBtn');
-                if(btn) {
-                    btn.classList.remove('hidden');
-                    btn.style.cursor = 'pointer';
-                }
-                this.subscribe();
-                this.loadMessages();
+                if(btn) { btn.classList.remove('hidden'); btn.style.cursor = 'pointer'; }
+                this.subscribe(); this.loadMessages();
             },
-
             toggle() {
                 this.isOpen = !this.isOpen;
                 document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
-                if(this.isOpen) {
-                    document.getElementById('chatBadge').classList.remove('active');
-                    this.scrollToBottom();
-                }
+                if(this.isOpen) { document.getElementById('chatBadge').classList.remove('active'); this.scrollToBottom(); }
             },
-
             async loadMessages() {
                 if(!app.data.phone) return;
-                const { data, error } = await supabaseClient
-                    .from('mensajes')
-                    .select('*')
-                    .eq('codigo_negocio', BUSINESS_CODE)
-                    .eq('telefono_cliente', app.data.phone)
-                    .order('created_at', { ascending: true });
-
-                const container = document.getElementById('chatContainer');
-                const welcomeMsg = document.getElementById('welcomeMsg');
-                container.innerHTML = ''; 
-                if(welcomeMsg) container.appendChild(welcomeMsg); 
-
-                if(data) {
-                    data.forEach(msg => this.renderMessage(msg));
-                    this.scrollToBottom();
-                }
+                const { data } = await supabaseClient.from('mensajes').select('*').eq('codigo_negocio', BUSINESS_CODE).eq('telefono_cliente', app.data.phone).order('created_at', { ascending: true });
+                const container = document.getElementById('chatContainer'); const welcomeMsg = document.getElementById('welcomeMsg');
+                container.innerHTML = ''; if(welcomeMsg) container.appendChild(welcomeMsg); 
+                if(data) { data.forEach(msg => this.renderMessage(msg)); this.scrollToBottom(); }
             },
-
             subscribe() {
                 if(this.subscription) return;
-                this.subscription = supabaseClient
-                    .channel('chat_cliente')
-                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `telefono_cliente=eq.${app.data.phone}` }, 
-                    payload => {
-                        this.renderMessage(payload.new);
-                        if(!this.isOpen && payload.new.emisor === 'admin') {
-                            document.getElementById('chatBadge').classList.add('active');
-                            if(navigator.vibrate) navigator.vibrate(50);
-                        } else {
-                            this.scrollToBottom();
-                        }
-                    })
-                    .subscribe();
+                this.subscription = supabaseClient.channel('chat_cliente').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `telefono_cliente=eq.${app.data.phone}` }, 
+                payload => {
+                    this.renderMessage(payload.new);
+                    if(!this.isOpen && payload.new.emisor === 'admin') { document.getElementById('chatBadge').classList.add('active'); if(navigator.vibrate) navigator.vibrate(50); } else { this.scrollToBottom(); }
+                }).subscribe();
             },
-
             renderMessage(msg) {
-                const div = document.createElement('div');
-                div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
+                const div = document.createElement('div'); div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
                 div.textContent = msg.contenido; 
-                if(msg.emisor === 'admin') {
-                   // Opcional: Agregar nombre del admin
-                }
                 document.getElementById('chatContainer').appendChild(div);
             },
-
             async send() {
-                const input = document.getElementById('chatInput');
-                const text = input.value.trim();
-                if(!text) return;
-
-                input.value = '';
-                
-                await supabaseClient.from('mensajes').insert([{
-                    codigo_negocio: BUSINESS_CODE,
-                    telefono_cliente: app.data.phone,
-                    emisor: 'cliente',
-                    contenido: text,
-                    leido: false
-                }]);
+                const input = document.getElementById('chatInput'); const text = input.value.trim();
+                if(!text) return; input.value = '';
+                await supabaseClient.from('mensajes').insert([{ codigo_negocio: BUSINESS_CODE, telefono_cliente: app.data.phone, emisor: 'cliente', contenido: text, leido: false }]);
             },
-
             handleEnter(e) { if(e.key === 'Enter') this.send(); },
-
-            scrollToBottom() {
-                const el = document.getElementById('chatContainer');
-                setTimeout(() => el.scrollTop = el.scrollHeight, 100);
-            }
+            scrollToBottom() { const el = document.getElementById('chatContainer'); setTimeout(() => el.scrollTop = el.scrollHeight, 100); }
         };
 
     </script>
