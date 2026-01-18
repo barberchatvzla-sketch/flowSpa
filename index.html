@@ -345,9 +345,9 @@
 
     <script>
         // CONFIGURACIÓN SUPABASE
-        const SUPABASE_URL = 'https://luwcggpjvsrhvdwjiarw.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1d2NnZ3BqdnNyaHZkd2ppYXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NjE4NTcsImV4cCI6MjA4MzIzNzg1N30.L_Yl3cVXdvLGcz3VZD-icJXAE4_myxqGo6o5dAkKw0M';
-        
+      const SUPABASE_URL = 'https://chpzkhuvfstmmljozpjc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHpraHV2ZnN0bW1sam96cGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NjQzMzksImV4cCI6MjA4NDM0MDMzOX0.uWRs0xB68ltUVEJPICFuS9vYCmDN06KTUfgbS_4W9WU';
+       
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // DEFAULT DEMO DATA
@@ -506,7 +506,7 @@
                     nombre_encargada: this.currentConfig.nombre_encargada,
                     imagen_portada: this.currentConfig.imagen_portada,
                     servicios: this.currentConfig.servicios
-                });
+                }, { onConflict: 'codigo_negocio' });
 
                 if(error) {
                     alert("Error al guardar: " + error.message);
