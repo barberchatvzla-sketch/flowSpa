@@ -176,8 +176,28 @@
         .day.today { color: var(--color-fuchsia); font-weight: bold; }
         
         .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .time-slot { padding: 15px; border: 1px solid #eee; border-radius: 12px; text-align: center; cursor: pointer; }
+        .time-slot { padding: 15px; border: 1px solid #eee; border-radius: 12px; text-align: center; cursor: pointer; position: relative; overflow: hidden; }
         .time-slot.selected { background: var(--color-fuchsia); color: white; border-color: var(--color-fuchsia); }
+        /* Nuevas clases para horarios ocupados */
+        .time-slot.disabled {
+            background-color: #f5f5f5;
+            color: #ccc;
+            border-color: #eee;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+        .slot-label-busy {
+            display: block;
+            font-size: 0.65rem;
+            color: #999;
+            margin-top: 2px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .time-loading {
+            text-align: center; color: #888; font-size: 0.9rem; padding: 20px;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
 
         /* --- SUMMARY & ACTIONS --- */
         .summary-box { background: var(--color-gray-bg); border-radius: var(--radius-card); padding: 30px; }
@@ -339,7 +359,9 @@
             <div class="step" id="step-4">
                 <h1>Horario</h1>
                 <p class="subtitle">Disponibilidad para la fecha seleccionada.</p>
-                <div class="time-grid" id="timeGrid"></div>
+                <div class="time-grid" id="timeGrid">
+                    <div class="time-loading"><div class="spinner" style="display:block; position:static;"></div> Buscando horarios...</div>
+                </div>
             </div>
 
             <div class="step" id="step-5">
@@ -390,20 +412,15 @@
 
         // --- 2. OBTENER CÓDIGO DE NEGOCIO ---
         const urlParams = new URLSearchParams(window.location.search);
-        
-        // Obtenemos el código y lo forzamos a MAYÚSCULAS y sin espacios para evitar errores
-        // Si no hay parámetro ref, usamos DEMO por defecto, pero ahora DEMO consultará la DB.
         let rawRef = urlParams.get('ref') || localStorage.getItem('last_business_ref') || 'DEMO';
         const BUSINESS_CODE = rawRef.trim().toUpperCase();
         
-        // Guardamos la referencia para futuras visitas
         localStorage.setItem('last_business_ref', BUSINESS_CODE);
-        
         console.log("Iniciando App con Código:", BUSINESS_CODE);
 
         const STORAGE_KEY = `glow_spa_phone_${BUSINESS_CODE}`;
 
-        // DATOS FALLBACK (Solo si la base de datos falla o está vacía, no por ser DEMO)
+        // DATOS FALLBACK
         const DEFAULT_CONFIG = {
             nombre_salon: 'GLOW Fallback',
             nombre_encargada: 'Sofía',
@@ -412,19 +429,14 @@
             servicios: []
         };
 
-        // Variable global de configuración
         let currentConfig = { ...DEFAULT_CONFIG };
         let deferredPrompt; 
 
         // --- 3. CICLO DE VIDA DE LA APP ---
         document.addEventListener('DOMContentLoaded', async () => {
-            // Intentar cargar configuración REAL desde Supabase
             await app.loadBusinessConfig();
-            
-            // Renderizar la interfaz con los datos cargados
             app.renderCover();
             app.renderServices();
-            
             app.setupPWA();
 
             setTimeout(() => {
@@ -435,7 +447,6 @@
             app.init();
         });
 
-        // Evento instalar PWA
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -465,8 +476,10 @@
                     if(currentDay < today) { el.style.opacity = '0.3'; el.style.pointerEvents = 'none'; }
                     el.onclick = () => {
                         document.querySelectorAll('.day').forEach(d => d.classList.remove('selected'));
-                        el.classList.add('selected'); this.selected = currentDay;
-                        setTimeout(() => app.nextStep(), 300);
+                        el.classList.add('selected'); 
+                        this.selected = currentDay;
+                        // Al seleccionar fecha, ir a siguiente paso y cargar disponibilidad
+                        setTimeout(() => app.prepareTimeSlots(), 300);
                     };
                     grid.appendChild(el);
                 }
@@ -482,43 +495,22 @@
 
             async loadBusinessConfig() {
                 try {
-                    console.log("Consultando Supabase para:", BUSINESS_CODE);
-                    
                     const { data, error } = await supabaseClient
-                        .from('negocios')
-                        .select('*')
-                        .eq('codigo_negocio', BUSINESS_CODE)
-                        .single();
-
-                    if(error) {
-                        console.error("Error Supabase:", error);
-                        // No lanzamos error para que la app cargue aunque sea con fallback
-                    }
-
+                        .from('negocios').select('*').eq('codigo_negocio', BUSINESS_CODE).single();
                     if(data) {
-                        console.log("Datos encontrados:", data);
-                        // SOBRESCRIBIR LA CONFIGURACIÓN CON DATOS DE LA DB
                         currentConfig.nombre_salon = data.nombre_salon || currentConfig.nombre_salon;
                         currentConfig.nombre_encargada = data.nombre_encargada || currentConfig.nombre_encargada;
                         currentConfig.imagen_portada = data.imagen_portada || currentConfig.imagen_portada;
                         currentConfig.logo_salon = data.logo_salon || currentConfig.logo_salon;
-                        
-                        if(data.servicios) {
-                            currentConfig.servicios = data.servicios;
-                        }
-                    } else {
-                        console.warn("No se encontró el negocio en la BD, usando default.");
+                        if(data.servicios) currentConfig.servicios = data.servicios;
                     }
-                } catch (e) { 
-                    console.error("Excepción cargando config:", e);
-                }
+                } catch (e) { console.error("Error config:", e); }
             },
 
             setupPWA() {
                 document.title = currentConfig.nombre_salon;
                 const metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
                 if(metaTitle) metaTitle.setAttribute('content', currentConfig.nombre_salon);
-                
                 const iconUrl = currentConfig.logo_salon || 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
                 document.getElementById('appleIcon').href = iconUrl;
                 document.getElementById('favIcon').href = iconUrl;
@@ -535,30 +527,21 @@
                         { "src": iconUrl, "sizes": "512x512", "type": "image/png" }
                     ]
                 };
-
-                const stringManifest = JSON.stringify(dynamicManifest);
-                const blob = new Blob([stringManifest], {type: 'application/json'});
-                const manifestURL = URL.createObjectURL(blob);
+                const blob = new Blob([JSON.stringify(dynamicManifest)], {type: 'application/json'});
                 const manifestLink = document.getElementById('dynamicManifest');
-                if(manifestLink) manifestLink.setAttribute('href', manifestURL);
+                if(manifestLink) manifestLink.setAttribute('href', URL.createObjectURL(blob));
 
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('/sw.js');
-                }
+                if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
             },
 
             installPWA() {
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
                     deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') {
-                            document.getElementById('install-prompt').style.display = 'none';
-                        }
+                        if (choiceResult.outcome === 'accepted') document.getElementById('install-prompt').style.display = 'none';
                         deferredPrompt = null;
                     });
-                } else {
-                    alert("Para instalar: Pulsa 'Compartir' en tu navegador y luego 'Agregar a Inicio'.");
-                }
+                } else alert("Para instalar: Pulsa 'Compartir' en tu navegador y luego 'Agregar a Inicio'.");
             },
 
             renderCover() {
@@ -566,41 +549,28 @@
                 document.getElementById('coverTitle').innerHTML = titleHtml;
                 document.getElementById('headerTitle').innerHTML = titleHtml;
                 document.getElementById('loadingLogo').innerHTML = titleHtml;
-                // Verificar que la imagen de portada no esté vacía
-                if(currentConfig.imagen_portada) {
-                    document.getElementById('cover-page').style.backgroundImage = `url('${currentConfig.imagen_portada}')`;
-                }
+                if(currentConfig.imagen_portada) document.getElementById('cover-page').style.backgroundImage = `url('${currentConfig.imagen_portada}')`;
             },
 
             renderServices() {
                 const container = document.getElementById('servicesContainer');
                 container.innerHTML = '';
-                
                 if(!currentConfig.servicios || currentConfig.servicios.length === 0) {
                     container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #888;">No hay servicios disponibles.</p>';
                     return;
                 }
-
                 currentConfig.servicios.forEach(srv => {
-                    const el = document.createElement('div');
-                    el.className = 'service-card';
+                    const el = document.createElement('div'); el.className = 'service-card';
                     el.onclick = () => app.selectService(el, srv.name);
                     const priceHtml = srv.price ? `<span class="service-price">${srv.price}</span>` : '';
-                    el.innerHTML = `
-                        <img src="${srv.img}" alt="${srv.name}" onerror="this.src='https://via.placeholder.com/300?text=${srv.name}'">
-                        <div class="service-overlay">
-                            <span class="service-name">${srv.name}</span>
-                            ${priceHtml}
-                        </div>`;
+                    el.innerHTML = `<img src="${srv.img}" alt="${srv.name}" onerror="this.src='https://via.placeholder.com/300?text=${srv.name}'"><div class="service-overlay"><span class="service-name">${srv.name}</span>${priceHtml}</div>`;
                     container.appendChild(el);
                 });
             },
 
             init() { 
                 calendar.init(); 
-                this.generateTimeSlots(); 
                 chatApp.init(); 
-
                 const cachedPhone = localStorage.getItem(STORAGE_KEY);
                 if(cachedPhone) {
                     document.getElementById('inputPhone').value = cachedPhone;
@@ -616,42 +586,26 @@
                     return;
                 }
                 clearTimeout(this.checkTimer);
-                this.checkTimer = setTimeout(() => {
-                    this.verifyUser(input.value);
-                }, 800);
+                this.checkTimer = setTimeout(() => { this.verifyUser(input.value); }, 800);
             },
 
             async verifyUser(phone) {
-                const spinner = document.getElementById('phoneSpinner');
-                spinner.style.display = 'block';
-
-                const { data, error } = await supabaseClient
-                    .from('reservas')
-                    .select('nombre, apellido')
-                    .eq('telefono', phone)
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-
-                spinner.style.display = 'none';
+                document.getElementById('phoneSpinner').style.display = 'block';
+                const { data } = await supabaseClient.from('reservas').select('nombre, apellido').eq('telefono', phone).order('created_at', { ascending: false }).limit(1);
+                document.getElementById('phoneSpinner').style.display = 'none';
                 localStorage.setItem(STORAGE_KEY, phone);
                 this.data.phone = phone;
 
                 if(data && data.length > 0) {
                     const user = data[0];
-                    this.data.name = user.nombre;
-                    this.data.surname = user.apellido;
-                    
+                    this.data.name = user.nombre; this.data.surname = user.apellido;
                     chatApp.enable();
-
-                    const welcomeMsg = document.getElementById('welcome-overlay');
                     document.getElementById('welcome-text').innerHTML = `Hola, espero que estés bien.<br>Bienvenida de nuevo, <b>${user.nombre} ${user.apellido}</b>`;
-                    welcomeMsg.style.display = 'flex'; 
+                    document.getElementById('welcome-overlay').style.display = 'flex'; 
                     document.getElementById('actionBar').style.display = 'none';
-
                     setTimeout(() => {
-                        welcomeMsg.style.display = 'none';
-                        this.step = 2; 
-                        this.updateUI();
+                        document.getElementById('welcome-overlay').style.display = 'none';
+                        this.step = 2; this.updateUI();
                     }, 2500);
                 } else {
                     document.getElementById('new-user-fields').classList.add('visible');
@@ -678,10 +632,9 @@
                     if(nameField.offsetParent !== null) { 
                         this.data.name = nameField.value.trim();
                         this.data.surname = document.getElementById('inputSurname').value.trim();
+                        if(!this.data.name || !this.data.surname) { this.shakeBtn(); return false; }
                         this.data.name = this.data.name.charAt(0).toUpperCase() + this.data.name.slice(1);
                         this.data.surname = this.data.surname.charAt(0).toUpperCase() + this.data.surname.slice(1);
-                        
-                        if(!this.data.name || !this.data.surname) { this.shakeBtn(); return false; }
                     }
                     if(!this.data.phone) { this.shakeBtn(); return false; }
                 }
@@ -698,17 +651,66 @@
                 setTimeout(() => this.nextStep(), 400);
             },
 
-            generateTimeSlots() {
+            // --- NUEVA LÓGICA: CARGAR HORARIOS OCUPADOS ---
+            async prepareTimeSlots() {
+                // Avanzar al paso 4 visualmente
+                this.step = 4;
+                this.data.date = calendar.selected;
+                this.updateUI();
+                
                 const container = document.getElementById('timeGrid');
-                const times = ["09:00", "10:00", "11:00", "13:00", "15:00", "16:30", "18:00", "19:30"];
-                times.forEach(t => {
-                    const d = document.createElement('div'); d.className = 'time-slot'; d.textContent = t;
-                    d.onclick = () => {
-                        document.querySelectorAll('.time-slot').forEach(x => x.classList.remove('selected'));
-                        d.classList.add('selected'); this.data.time = t;
-                        setTimeout(() => this.nextStep(), 300);
-                    };
-                    container.appendChild(d);
+                // Mostrar loading
+                container.innerHTML = '<div class="time-loading"><div class="spinner" style="display:block; position:static;"></div> Buscando disponibilidad...</div>';
+
+                // Definir horarios base
+                const baseTimes = ["09:00", "10:00", "11:00", "13:00", "15:00", "16:30", "18:00", "19:30"];
+                
+                // Formatear fecha para Supabase (YYYY-MM-DD)
+                // Usamos toLocaleDateString con formato sueco para obtener YYYY-MM-DD localmente y evitar problemas de zona horaria
+                const year = this.data.date.getFullYear();
+                const month = String(this.data.date.getMonth() + 1).padStart(2, '0');
+                const day = String(this.data.date.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`;
+
+                // Consultar reservas existentes
+                let bookedTimes = [];
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('reservas')
+                        .select('hora')
+                        .eq('codigo_negocio', BUSINESS_CODE)
+                        .eq('fecha', dateStr)
+                        .neq('estado', 'cancelada'); // Importante: ignorar canceladas
+
+                    if(data) {
+                        bookedTimes = data.map(b => b.hora);
+                    }
+                } catch(err) {
+                    console.error("Error fetching bookings", err);
+                }
+
+                // Renderizar grid
+                container.innerHTML = '';
+                baseTimes.forEach(t => {
+                    const isTaken = bookedTimes.includes(t);
+                    const div = document.createElement('div'); 
+                    div.className = `time-slot ${isTaken ? 'disabled' : ''}`;
+                    
+                    let content = t;
+                    if(isTaken) {
+                        content += '<span class="slot-label-busy">Ocupado</span>';
+                    }
+
+                    div.innerHTML = content;
+                    
+                    if(!isTaken) {
+                        div.onclick = () => {
+                            document.querySelectorAll('.time-slot').forEach(x => x.classList.remove('selected'));
+                            div.classList.add('selected'); this.data.time = t;
+                            setTimeout(() => this.nextStep(), 300);
+                        };
+                    }
+                    container.appendChild(div);
                 });
             },
 
@@ -747,13 +749,18 @@
                 const btn = document.getElementById('mainBtn');
                 btn.innerHTML = 'Enviando...'; btn.disabled = true;
                 try {
+                    const year = this.data.date.getFullYear();
+                    const month = String(this.data.date.getMonth() + 1).padStart(2, '0');
+                    const day = String(this.data.date.getDate()).padStart(2, '0');
+                    const dateStr = `${year}-${month}-${day}`;
+
                     const { error } = await supabaseClient.from('reservas').insert([{
                         codigo_negocio: BUSINESS_CODE,
                         nombre: this.data.name,
                         apellido: this.data.surname,
                         telefono: this.data.phone,
                         servicio: this.data.service,
-                        fecha: this.data.date.toISOString().split('T')[0],
+                        fecha: dateStr,
                         hora: this.data.time,
                         estado: 'pendiente'
                     }]);
@@ -785,7 +792,6 @@
                 welcomeDiv.className = 'msg admin';
                 welcomeDiv.id = 'welcomeMsg';
                 welcomeDiv.style.marginBottom = '20px';
-                // Usa el nombre de la encargada cargado dinámicamente
                 const nombreEncargada = currentConfig.nombre_encargada.split(' ')[0];
                 welcomeDiv.innerHTML = `<b style="color:var(--color-fuchsia)">${currentConfig.nombre_encargada}</b><br>Hola 👋, soy ${nombreEncargada}. ¿En qué te puedo ayudar?`;
                 container.appendChild(welcomeDiv);
@@ -810,11 +816,8 @@
                 
                 const container = document.getElementById('chatContainer');
                 const welcomeMsg = document.getElementById('welcomeMsg');
-                
-                // Limpiar pero salvar el mensaje de bienvenida
                 container.innerHTML = ''; 
                 if(welcomeMsg) container.appendChild(welcomeMsg); 
-                
                 if(data) { data.forEach(msg => this.renderMessage(msg)); this.scrollToBottom(); }
             },
             subscribe() {
@@ -823,7 +826,6 @@
                     .on('postgres_changes', 
                         { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `codigo_negocio=eq.${BUSINESS_CODE}` }, 
                         payload => {
-                            // Solo mostrar si el teléfono coincide con el usuario actual
                             if(payload.new.telefono_cliente === app.data.phone) {
                                 this.renderMessage(payload.new);
                                 if(!this.isOpen && payload.new.emisor === 'admin') {
