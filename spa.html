@@ -4,19 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <title>Reserva tu Cita</title>
-    
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Glow App - Reserva tu Cita">
-    <meta property="og:description" content="Agenda tu experiencia de belleza y bienestar de forma rápida y sencilla.">
-    <meta property="og:image" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
-    <meta property="og:url" content="">
-    <meta property="og:site_name" content="Glow App">
+    <title>Reserva tu Cita | Glow App</title>
+    <meta name="description" content="Agenda tu experiencia de belleza y bienestar de forma rápida y sencilla.">
 
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Glow App - Reserva tu Cita">
-    <meta name="twitter:description" content="Agenda tu experiencia de belleza y bienestar.">
-    <meta name="twitter:image" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://glow-app.com/">
+    <meta property="og:title" content="Reserva tu Cita | Glow App">
+    <meta property="og:description" content="Agenda tu experiencia de belleza y bienestar. Haz clic para reservar.">
+    
+    <meta property="og:image" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
+    <meta property="og:image:secure_url" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://glow-app.com/">
+    <meta property="twitter:title" content="Reserva tu Cita | Glow App">
+    <meta property="twitter:description" content="Agenda tu experiencia de belleza y bienestar.">
+    <meta property="twitter:image" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -517,41 +523,24 @@
                         if(data.servicios) currentConfig.servicios = data.servicios;
                         
                         // ACTUALIZAR METADATA SOCIAL DINÁMICAMENTE
+                        // Nota: WhatsApp NO verá esto, pero ayuda para otros navegadores que sí ejecuten JS
                         this.updateMetaTags(currentConfig.nombre_salon, currentConfig.imagen_portada);
                     }
                 } catch (e) { console.error("Error config:", e); }
             },
 
-            // --- FUNCIÓN DE PREVISUALIZACIÓN SOCIAL ---
+            // --- FUNCIÓN DE PREVISUALIZACIÓN SOCIAL (CLIENT-SIDE) ---
             updateMetaTags(title, image) {
                 // Actualizar Título del documento
                 document.title = title;
-                
-                // Función helper para actualizar etiquetas
+                // Intentamos actualizar dinámicamente por si el usuario comparte desde un navegador activo
                 const setMeta = (prop, content) => {
                     let el = document.querySelector(`meta[property="${prop}"]`) || document.querySelector(`meta[name="${prop}"]`);
-                    if (!el) {
-                        el = document.createElement('meta');
-                        if (prop.startsWith('og:')) el.setAttribute('property', prop);
-                        else el.setAttribute('name', prop);
-                        document.head.appendChild(el);
-                    }
-                    el.setAttribute('content', content);
+                    if (el) el.setAttribute('content', content);
                 };
-
-                const desc = `Reserva tu cita en ${title}. Experiencias de lujo y bienestar.`;
-                
-                // Open Graph
                 setMeta('og:title', title);
-                setMeta('og:description', desc);
                 setMeta('og:image', image);
-                setMeta('og:url', window.location.href);
-                setMeta('og:site_name', title);
-
-                // Twitter
-                setMeta('twitter:title', title);
-                setMeta('twitter:description', desc);
-                setMeta('twitter:image', image);
+                setMeta('og:image:secure_url', image);
             },
             // ------------------------------------------
 
