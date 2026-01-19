@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <title>Reserva tu Cita</title>
+    
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Glow App - Reserva tu Cita">
+    <meta property="og:description" content="Agenda tu experiencia de belleza y bienestar de forma rápida y sencilla.">
+    <meta property="og:image" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
+    <meta property="og:url" content="">
+    <meta property="og:site_name" content="Glow App">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Glow App - Reserva tu Cita">
+    <meta name="twitter:description" content="Agenda tu experiencia de belleza y bienestar.">
+    <meta name="twitter:image" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -503,12 +515,48 @@
                         currentConfig.imagen_portada = data.imagen_portada || currentConfig.imagen_portada;
                         currentConfig.logo_salon = data.logo_salon || currentConfig.logo_salon;
                         if(data.servicios) currentConfig.servicios = data.servicios;
+                        
+                        // ACTUALIZAR METADATA SOCIAL DINÁMICAMENTE
+                        this.updateMetaTags(currentConfig.nombre_salon, currentConfig.imagen_portada);
                     }
                 } catch (e) { console.error("Error config:", e); }
             },
 
+            // --- FUNCIÓN DE PREVISUALIZACIÓN SOCIAL ---
+            updateMetaTags(title, image) {
+                // Actualizar Título del documento
+                document.title = title;
+                
+                // Función helper para actualizar etiquetas
+                const setMeta = (prop, content) => {
+                    let el = document.querySelector(`meta[property="${prop}"]`) || document.querySelector(`meta[name="${prop}"]`);
+                    if (!el) {
+                        el = document.createElement('meta');
+                        if (prop.startsWith('og:')) el.setAttribute('property', prop);
+                        else el.setAttribute('name', prop);
+                        document.head.appendChild(el);
+                    }
+                    el.setAttribute('content', content);
+                };
+
+                const desc = `Reserva tu cita en ${title}. Experiencias de lujo y bienestar.`;
+                
+                // Open Graph
+                setMeta('og:title', title);
+                setMeta('og:description', desc);
+                setMeta('og:image', image);
+                setMeta('og:url', window.location.href);
+                setMeta('og:site_name', title);
+
+                // Twitter
+                setMeta('twitter:title', title);
+                setMeta('twitter:description', desc);
+                setMeta('twitter:image', image);
+            },
+            // ------------------------------------------
+
             setupPWA() {
-                document.title = currentConfig.nombre_salon;
+                // Actualizar título PWA
                 const metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
                 if(metaTitle) metaTitle.setAttribute('content', currentConfig.nombre_salon);
                 const iconUrl = currentConfig.logo_salon || 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
@@ -651,28 +699,21 @@
                 setTimeout(() => this.nextStep(), 400);
             },
 
-            // --- NUEVA LÓGICA: CARGAR HORARIOS OCUPADOS ---
             async prepareTimeSlots() {
-                // Avanzar al paso 4 visualmente
                 this.step = 4;
                 this.data.date = calendar.selected;
                 this.updateUI();
                 
                 const container = document.getElementById('timeGrid');
-                // Mostrar loading
                 container.innerHTML = '<div class="time-loading"><div class="spinner" style="display:block; position:static;"></div> Buscando disponibilidad...</div>';
 
-                // Definir horarios base
                 const baseTimes = ["09:00", "10:00", "11:00", "13:00", "15:00", "16:30", "18:00", "19:30"];
                 
-                // Formatear fecha para Supabase (YYYY-MM-DD)
-                // Usamos toLocaleDateString con formato sueco para obtener YYYY-MM-DD localmente y evitar problemas de zona horaria
                 const year = this.data.date.getFullYear();
                 const month = String(this.data.date.getMonth() + 1).padStart(2, '0');
                 const day = String(this.data.date.getDate()).padStart(2, '0');
                 const dateStr = `${year}-${month}-${day}`;
 
-                // Consultar reservas existentes
                 let bookedTimes = [];
                 try {
                     const { data, error } = await supabaseClient
@@ -680,7 +721,7 @@
                         .select('hora')
                         .eq('codigo_negocio', BUSINESS_CODE)
                         .eq('fecha', dateStr)
-                        .neq('estado', 'cancelada'); // Importante: ignorar canceladas
+                        .neq('estado', 'cancelada');
 
                     if(data) {
                         bookedTimes = data.map(b => b.hora);
@@ -689,7 +730,6 @@
                     console.error("Error fetching bookings", err);
                 }
 
-                // Renderizar grid
                 container.innerHTML = '';
                 baseTimes.forEach(t => {
                     const isTaken = bookedTimes.includes(t);
