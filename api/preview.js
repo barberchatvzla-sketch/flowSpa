@@ -40,7 +40,8 @@ export default async function handler(req, res) {
 
         // 4. LEER EL ARCHIVO LOCALMENTE (SOLUCIÓN DEL ERROR)
         // En lugar de fetch, usamos fs para leer el archivo del disco
-        const filePath = path.join(process.cwd(), 'spa.html');
+        // Usamos process.cwd() pero nos aseguramos que Vercel sepa dónde buscar
+const filePath = path.join(process.cwd(), 'spa.html');
         let html = fs.readFileSync(filePath, 'utf-8');
 
         // 5. REEMPLAZO DE VARIABLES SEO
