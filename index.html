@@ -689,7 +689,7 @@
 
             renderConfigForm() {
                 const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-                const publicUrl = `${baseUrl}spa.html?ref=${this.code}`;
+                const publicUrl = `${baseUrl}/reserva/${this.code}`;
                 
                 document.getElementById('publicLinkDisplay').value = publicUrl;
                 document.getElementById('openLinkBtn').href = publicUrl;
