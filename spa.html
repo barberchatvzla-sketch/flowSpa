@@ -495,21 +495,25 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // --- 2. OBTENER CÓDIGO DE NEGOCIO (LÓGICA ACTUALIZADA) ---
-        // Soporta tanto ?ref=CODIGO como /reserva/CODIGO
-        const urlParams = new URLSearchParams(window.location.search);
-        let rawRef = urlParams.get('ref');
+        // 1. Intentamos leer la variable inyectada por preview.js (Prioridad Máxima)
+        let rawRef = window.NEGOCIO_ID_SERVER;
 
-        // Si no hay parámetro ?ref, intentamos leer desde la URL amigable
+        // 2. Si no hay inyección (ej. desarrollo local), buscamos ?ref=CODIGO
+        if (!rawRef) {
+            const urlParams = new URLSearchParams(window.location.search);
+            rawRef = urlParams.get('ref');
+        }
+
+        // 3. Si no hay ref, buscamos en el path /reserva/CODIGO
         if (!rawRef) {
             const pathSegments = window.location.pathname.split('/');
-            // Buscamos si la URL contiene 'reserva' y tomamos el siguiente segmento
             const reservaIndex = pathSegments.indexOf('reserva');
             if (reservaIndex !== -1 && pathSegments[reservaIndex + 1]) {
                 rawRef = pathSegments[reservaIndex + 1];
             }
         }
 
-        // Fallback a localStorage o DEMO si todo falla
+        // 4. Fallback a localStorage o DEMO si todo falla
         rawRef = rawRef || localStorage.getItem('last_business_ref') || 'DEMO';
         const BUSINESS_CODE = rawRef.trim().toUpperCase();
         
