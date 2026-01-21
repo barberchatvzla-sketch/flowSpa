@@ -4,25 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <title>Reserva tu Cita | Glow App</title>
-    <meta name="description" content="Agenda tu experiencia de belleza y bienestar de forma rápida y sencilla.">
+    <title>__OG_TITLE__</title>
+    <meta name="description" content="__OG_DESCRIPTION__">
 
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://glow-app.com/">
-    <meta property="og:title" content="Reserva tu Cita | Glow App">
-    <meta property="og:description" content="Agenda tu experiencia de belleza y bienestar. Haz clic para reservar.">
+    <meta property="og:url" content="__OG_URL__">
+    <meta property="og:title" content="__OG_TITLE__">
+    <meta property="og:description" content="__OG_DESCRIPTION__">
+    <meta property="og:image" content="__OG_IMAGE__">
     
-    <meta property="og:image" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
-    <meta property="og:image:secure_url" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
-    <meta property="og:image:type" content="image/png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://glow-app.com/">
-    <meta property="twitter:title" content="Reserva tu Cita | Glow App">
-    <meta property="twitter:description" content="Agenda tu experiencia de belleza y bienestar.">
-    <meta property="twitter:image" content="https://i.ibb.co/67C1hcrb/1767558273844.png">
+    <meta property="twitter:url" content="__OG_URL__">
+    <meta property="twitter:title" content="__OG_TITLE__">
+    <meta property="twitter:description" content="__OG_DESCRIPTION__">
+    <meta property="twitter:image" content="__OG_IMAGE__">
+
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -66,120 +62,89 @@
         }
 
         /* --- LOADING & COVER --- */
-#loading-screen {
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100vw; 
-    height: 100dvh;
-    background: #000; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    align-items: center; 
-    z-index: 10000; 
-    opacity: 1; 
-    transition: opacity 0.8s, visibility 0.8s; 
-    pointer-events: none;
-}
-.loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    width: 100%;
-}
+        #loading-screen {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100dvh;
+            background: #000; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 10000; 
+            opacity: 1; 
+            transition: opacity 0.8s, visibility 0.8s; 
+            pointer-events: none;
+        }
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+        }
         #loading-screen.fade-out { opacity: 0; visibility: hidden; }
         
         .loading-logo {
-    font-family: var(--font-serif); 
-    font-size: clamp(3rem, 10vw, 4.5rem);
-    font-weight: 700; 
-    line-height: 1;
-    letter-spacing: -1px; 
-    color: var(--color-white);
-    text-align: center;
-    width: 100%;
-    max-width: 90%;
-    margin: 0 auto;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    hyphens: auto;
-    /* ✅ POSICIÓN INICIAL - CENTRADO VERTICALMENTE */
-    position: relative;
-    top: 0;
-    
-    /* ✅ ANIMACIÓN DE ENTRADA */
-    animation: logoEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
+            font-family: var(--font-serif); 
+            font-size: clamp(3rem, 10vw, 4.5rem);
+            font-weight: 700; 
+            line-height: 1;
+            letter-spacing: -1px; 
+            color: var(--color-white);
+            text-align: center;
+            width: 100%;
+            max-width: 90%;
+            margin: 0 auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            position: relative;
+            top: 0;
+            animation: logoEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
 
         .loading-logo span { color: var(--color-fuchsia); }
         
-        
-/* ✅ NUEVO: ESTILO PARA EL NOMBRE DEL SALÓN */
-.loading-salon-name {
-    font-family: var(--font-serif);
-    font-size: clamp(1.8rem, 5vw, 2.5rem);
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
-    text-align: center;
-    width: 100%;
-    max-width: 90%;
-    margin-top: 20px;
-    opacity: 0;
-    transform: translateY(20px);
-    
-    /* ✅ ANIMACIÓN QUE SE ACTIVARÁ DESPUÉS */
-    animation: salonNameEntrance 1s ease 1.2s forwards;
-}
+        .loading-salon-name {
+            font-family: var(--font-serif);
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            width: 100%;
+            max-width: 90%;
+            margin-top: 20px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: salonNameEntrance 1s ease 1.2s forwards;
+        }
 
-/* ✅ ANIMACIÓN PARA EL LOGO PRINCIPAL */
-@keyframes logoEntrance {
-    0% {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    50% {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    100% {
-        /* Mantiene posición centrada inicialmente */
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
+        @keyframes logoEntrance {
+            0% { opacity: 0; transform: translateY(30px); }
+            50% { opacity: 1; transform: translateY(0); }
+            100% { transform: translateY(0); opacity: 1; }
+        }
 
-/* ✅ ANIMACIÓN PARA EL NOMBRE DEL SALÓN */
-@keyframes salonNameEntrance {
-    0% {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+        @keyframes salonNameEntrance {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
 
-/* ✅ ANIMACIÓN QUE MUEVE EL LOGO HACIA ARRIBA CUANDO APARECE EL NOMBRE */
-@keyframes moveLogoUp {
-    0% {
-        transform: translateY(0);
-    }
-    100% {
-        transform: translateY(-40px);
-    }
-}
+        @keyframes moveLogoUp {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-40px); }
+        }
 
         #cover-page {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
             background-size: cover; background-position: center; z-index: 9999;
             display: flex; flex-direction: column; justify-content: flex-end;
             transition: opacity 0.8s, visibility 0.8s; opacity: 0; visibility: hidden;
-            background-color: #111; /* Fallback */
+            background-color: #111;
         }
         body.resources-loaded #cover-page { opacity: 1; visibility: visible; }
         body.app-active #cover-page { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -212,25 +177,20 @@
             padding-top: max(25px, env(safe-area-inset-top)); 
         }
         .brand-small { 
-    font-family: var(--font-serif); 
-    font-size: clamp(1.2rem, 4vw, 1.4rem); /* Tamaño flexible */
-    font-weight: 700; 
-    max-width: 180px; 
-    white-space: nowrap; 
-    overflow: hidden; 
-    text-overflow: ellipsis;
-    text-align: center;
-    margin: 0 auto;
-    transition: all 0.3s ease;
-}
-
-/* Ajuste para nombres más largos en header */
-@media (max-width: 380px) {
-    .brand-small {
-        max-width: 150px;
-        font-size: 1.1rem;
-    }
-}
+            font-family: var(--font-serif); 
+            font-size: clamp(1.2rem, 4vw, 1.4rem);
+            font-weight: 700; 
+            max-width: 180px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+            text-align: center;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+        }
+        @media (max-width: 380px) {
+            .brand-small { max-width: 150px; font-size: 1.1rem; }
+        }
         .brand-small span { color: var(--color-fuchsia); }
         
         .btn-nav {
@@ -298,13 +258,9 @@
         }
         .service-name { font-size: 0.9rem; font-weight: 600; line-height: 1.2; }
         .service-price { 
-    font-size: 0.85rem; 
-    opacity: 1; 
-    margin-top: 2px; 
-    color: #FFFFFF;  /* ← COLOR FIJO BLANCO */
-    font-weight: 800; 
-    text-shadow: 0px 1px 3px rgba(0,0,0,0.8); /* ← SOMBRA PARA MEJOR LECTURA */
-}
+            font-size: 0.85rem; opacity: 1; margin-top: 2px; color: #FFFFFF; font-weight: 800; 
+            text-shadow: 0px 1px 3px rgba(0,0,0,0.8);
+        }
         .service-card.selected { border: 3px solid var(--color-fuchsia); transform: scale(0.98); }
 
         /* --- CALENDAR & TIME --- */
@@ -318,26 +274,9 @@
         .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         .time-slot { padding: 15px; border: 1px solid #eee; border-radius: 12px; text-align: center; cursor: pointer; position: relative; overflow: hidden; }
         .time-slot.selected { background: var(--color-fuchsia); color: white; border-color: var(--color-fuchsia); }
-        /* Nuevas clases para horarios ocupados */
-        .time-slot.disabled {
-            background-color: #f5f5f5;
-            color: #ccc;
-            border-color: #eee;
-            pointer-events: none;
-            cursor: not-allowed;
-        }
-        .slot-label-busy {
-            display: block;
-            font-size: 0.65rem;
-            color: #999;
-            margin-top: 2px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        .time-loading {
-            text-align: center; color: #888; font-size: 0.9rem; padding: 20px;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-        }
+        .time-slot.disabled { background-color: #f5f5f5; color: #ccc; border-color: #eee; pointer-events: none; cursor: not-allowed; }
+        .slot-label-busy { display: block; font-size: 0.65rem; color: #999; margin-top: 2px; text-transform: uppercase; font-weight: bold; }
+        .time-loading { text-align: center; color: #888; font-size: 0.9rem; padding: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
         /* --- SUMMARY & ACTIONS --- */
         .summary-box { background: var(--color-gray-bg); border-radius: var(--radius-card); padding: 30px; }
@@ -363,20 +302,11 @@
         }
         .modal-overlay.active { opacity: 1; pointer-events: all; }
         .modal-card { text-align: center; padding: 40px; background: white; border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
-       .success-check { 
-    width: 80px; 
-    height: 80px; 
-    background: #000000;          /* ← FONDO NEGRO FIJO */
-    color: #FFFFFF;               /* ← CHECKMARK BLANCO FIJO */
-    border-radius: 50%; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    font-size: 2.5rem; 
-    margin: 0 auto 25px auto; 
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3); /* ← SOMBRA PARA DESTACAR */
-    border: 3px solid rgba(255,255,255,0.1); /* ← BORDE SUTIL */
-}
+        .success-check { 
+            width: 80px; height: 80px; background: #000000; color: #FFFFFF;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; margin: 0 auto 25px auto; box-shadow: 0 8px 20px rgba(0,0,0,0.3); border: 3px solid rgba(255,255,255,0.1);
+        }
 
         /* --- CHAT STYLES --- */
         .chat-badge {
@@ -424,12 +354,12 @@
 </head>
 <body>
 
-   <div id="loading-screen">
-    <div class="loading-container">
-        <div class="loading-logo" id="loadingLogo">GLOW<span>.</span></div>
-        <div class="loading-salon-name" id="loadingSalonName"></div>
+    <div id="loading-screen">
+        <div class="loading-container">
+            <div class="loading-logo" id="loadingLogo">GLOW<span>.</span></div>
+            <div class="loading-salon-name" id="loadingSalonName"></div>
+        </div>
     </div>
-</div>
 
     <div id="cover-page">
         <div class="cover-gradient-overlay"></div>
@@ -495,8 +425,7 @@
                 </div>
                 <p class="subtitle">Selecciona tu tratamiento exclusivo.</p>
                 
-                <div class="services-grid" id="servicesContainer">
-                    </div>
+                <div class="services-grid" id="servicesContainer"></div>
             </div>
 
             <div class="step" id="step-3">
@@ -552,8 +481,7 @@
             <h2 style="font-family: var(--font-serif); font-size: 1.5rem;">Soporte</h2>
             <button class="btn-nav" onclick="chatApp.toggle()" style="border:none;"><i class="ph ph-x"></i></button>
         </header>
-        <div class="chat-body" id="chatContainer">
-            </div>
+        <div class="chat-body" id="chatContainer"></div>
         <div class="chat-footer">
             <input type="text" class="chat-input" id="chatInput" placeholder="Escribe un mensaje..." onkeypress="chatApp.handleEnter(event)">
             <button class="send-btn" onclick="chatApp.send()"><i class="ph ph-paper-plane-right" style="font-size:1.2rem"></i></button>
@@ -566,9 +494,23 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHpraHV2ZnN0bW1sam96cGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NjQzMzksImV4cCI6MjA4NDM0MDMzOX0.uWRs0xB68ltUVEJPICFuS9vYCmDN06KTUfgbS_4W9WU';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- 2. OBTENER CÓDIGO DE NEGOCIO ---
+        // --- 2. OBTENER CÓDIGO DE NEGOCIO (LÓGICA ACTUALIZADA) ---
+        // Soporta tanto ?ref=CODIGO como /reserva/CODIGO
         const urlParams = new URLSearchParams(window.location.search);
-        let rawRef = urlParams.get('ref') || localStorage.getItem('last_business_ref') || 'DEMO';
+        let rawRef = urlParams.get('ref');
+
+        // Si no hay parámetro ?ref, intentamos leer desde la URL amigable
+        if (!rawRef) {
+            const pathSegments = window.location.pathname.split('/');
+            // Buscamos si la URL contiene 'reserva' y tomamos el siguiente segmento
+            const reservaIndex = pathSegments.indexOf('reserva');
+            if (reservaIndex !== -1 && pathSegments[reservaIndex + 1]) {
+                rawRef = pathSegments[reservaIndex + 1];
+            }
+        }
+
+        // Fallback a localStorage o DEMO si todo falla
+        rawRef = rawRef || localStorage.getItem('last_business_ref') || 'DEMO';
         const BUSINESS_CODE = rawRef.trim().toUpperCase();
         
         localStorage.setItem('last_business_ref', BUSINESS_CODE);
@@ -578,13 +520,13 @@
 
         // DATOS FALLBACK
         const DEFAULT_CONFIG = {
-    nombre_salon: 'GLOW Fallback',
-    nombre_encargada: 'Sofía',
-    imagen_portada: 'https://i.ibb.co/67C1hcrb/1767558273844.png',
-    logo_salon: 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png', 
-    servicios: [],
-    theme_color: '#E000E0' // ← AÑADIR ESTA LÍNEA
-};
+            nombre_salon: 'GLOW Fallback',
+            nombre_encargada: 'Sofía',
+            imagen_portada: 'https://i.ibb.co/67C1hcrb/1767558273844.png',
+            logo_salon: 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png', 
+            servicios: [],
+            theme_color: '#E000E0'
+        };
 
         let currentConfig = { ...DEFAULT_CONFIG };
         let deferredPrompt; 
@@ -635,7 +577,6 @@
                         document.querySelectorAll('.day').forEach(d => d.classList.remove('selected'));
                         el.classList.add('selected'); 
                         this.selected = currentDay;
-                        // Al seleccionar fecha, ir a siguiente paso y cargar disponibilidad
                         setTimeout(() => app.prepareTimeSlots(), 300);
                     };
                     grid.appendChild(el);
@@ -650,33 +591,26 @@
             data: { phone: '', name: '', surname: '', service: '', date: null, time: '' },
             checkTimer: null,
 
-     async loadBusinessConfig() {
-    try {
-        const { data, error } = await supabaseClient
-            .from('negocios').select('*').eq('codigo_negocio', BUSINESS_CODE).single();
-        if(data) {
-            currentConfig.nombre_salon = data.nombre_salon || currentConfig.nombre_salon;
-            currentConfig.nombre_encargada = data.nombre_encargada || currentConfig.nombre_encargada;
-            currentConfig.imagen_portada = data.imagen_portada || currentConfig.imagen_portada;
-            currentConfig.logo_salon = data.logo_salon || currentConfig.logo_salon;
-            currentConfig.theme_color = data.theme_color || currentConfig.theme_color; // ← NUEVA LÍNEA
-            if(data.servicios) currentConfig.servicios = data.servicios;
-            
-            // ACTUALIZAR METADATA SOCIAL DINÁMICAMENTE
-            // Nota: WhatsApp NO verá esto, pero ayuda para otros navegadores que sí ejecuten JS
-            this.updateMetaTags(currentConfig.nombre_salon, currentConfig.imagen_portada);
-            
-            // ✅ APLICAR EL COLOR DEL TEMA
-            this.applyThemeColor(currentConfig.theme_color);
-        }
-    } catch (e) { console.error("Error config:", e); }
-},
+            async loadBusinessConfig() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('negocios').select('*').eq('codigo_negocio', BUSINESS_CODE).single();
+                    if(data) {
+                        currentConfig.nombre_salon = data.nombre_salon || currentConfig.nombre_salon;
+                        currentConfig.nombre_encargada = data.nombre_encargada || currentConfig.nombre_encargada;
+                        currentConfig.imagen_portada = data.imagen_portada || currentConfig.imagen_portada;
+                        currentConfig.logo_salon = data.logo_salon || currentConfig.logo_salon;
+                        currentConfig.theme_color = data.theme_color || currentConfig.theme_color;
+                        if(data.servicios) currentConfig.servicios = data.servicios;
+                        
+                        this.updateMetaTags(currentConfig.nombre_salon, currentConfig.imagen_portada);
+                        this.applyThemeColor(currentConfig.theme_color);
+                    }
+                } catch (e) { console.error("Error config:", e); }
+            },
 
-            // --- FUNCIÓN DE PREVISUALIZACIÓN SOCIAL (CLIENT-SIDE) ---
             updateMetaTags(title, image) {
-                // Actualizar Título del documento
                 document.title = title;
-                // Intentamos actualizar dinámicamente por si el usuario comparte desde un navegador activo
                 const setMeta = (prop, content) => {
                     let el = document.querySelector(`meta[property="${prop}"]`) || document.querySelector(`meta[name="${prop}"]`);
                     if (el) el.setAttribute('content', content);
@@ -685,62 +619,47 @@
                 setMeta('og:image', image);
                 setMeta('og:image:secure_url', image);
             },
-            // ------------------------------------------
 
-           setupPWA() {
-    // Actualizar título PWA
-    const metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-    if(metaTitle) metaTitle.setAttribute('content', currentConfig.nombre_salon);
-    const iconUrl = currentConfig.logo_salon || 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
-    document.getElementById('appleIcon').href = iconUrl;
-    document.getElementById('favIcon').href = iconUrl;
+            setupPWA() {
+                const metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+                if(metaTitle) metaTitle.setAttribute('content', currentConfig.nombre_salon);
+                const iconUrl = currentConfig.logo_salon || 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
+                document.getElementById('appleIcon').href = iconUrl;
+                document.getElementById('favIcon').href = iconUrl;
+                this.updateManifestTheme(currentConfig.theme_color);
+                if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+            },
 
-    // ✅ Usar el color del tema para el manifest
-    this.updateManifestTheme(currentConfig.theme_color);
+            applyThemeColor(colorHex) {
+                document.documentElement.style.setProperty('--color-fuchsia', colorHex);
+                const r = parseInt(colorHex.slice(1, 3), 16);
+                const g = parseInt(colorHex.slice(3, 5), 16);
+                const b = parseInt(colorHex.slice(5, 7), 16);
+                const glowColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+                document.documentElement.style.setProperty('--color-fuchsia-glow', glowColor);
+                const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                if(metaThemeColor) { metaThemeColor.setAttribute('content', colorHex); }
+            },
 
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
-},
-// ✅ NUEVA FUNCIÓN: Aplicar color del tema
-applyThemeColor(colorHex) {
-    // Actualiza las variables CSS
-    document.documentElement.style.setProperty('--color-fuchsia', colorHex);
-    
-    // Calcula el color para el glow (con transparencia)
-    const r = parseInt(colorHex.slice(1, 3), 16);
-    const g = parseInt(colorHex.slice(3, 5), 16);
-    const b = parseInt(colorHex.slice(5, 7), 16);
-    const glowColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
-    document.documentElement.style.setProperty('--color-fuchsia-glow', glowColor);
-    
-    // Actualiza también el theme-color para PWA
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if(metaThemeColor) {
-        metaThemeColor.setAttribute('content', colorHex);
-    }
-},
+            updateManifestTheme(colorHex) {
+                const iconUrl = currentConfig.logo_salon || 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
+                const dynamicManifest = {
+                    "name": currentConfig.nombre_salon,
+                    "short_name": currentConfig.nombre_salon,
+                    "start_url": window.location.href,
+                    "display": "standalone",
+                    "background_color": "#000000",
+                    "theme_color": colorHex,
+                    "icons": [
+                        { "src": iconUrl, "sizes": "192x192", "type": "image/png" },
+                        { "src": iconUrl, "sizes": "512x512", "type": "image/png" }
+                    ]
+                };
+                const blob = new Blob([JSON.stringify(dynamicManifest)], {type: 'application/json'});
+                const manifestLink = document.getElementById('dynamicManifest');
+                if(manifestLink) { manifestLink.setAttribute('href', URL.createObjectURL(blob)); }
+            },
 
-// ✅ NUEVA FUNCIÓN: Actualizar manifest con color del tema
-updateManifestTheme(colorHex) {
-    const iconUrl = currentConfig.logo_salon || 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
-    const dynamicManifest = {
-        "name": currentConfig.nombre_salon,
-        "short_name": currentConfig.nombre_salon,
-        "start_url": window.location.href,
-        "display": "standalone",
-        "background_color": "#000000",
-        "theme_color": colorHex, // ✅ Usa el color del negocio
-        "icons": [
-            { "src": iconUrl, "sizes": "192x192", "type": "image/png" },
-            { "src": iconUrl, "sizes": "512x512", "type": "image/png" }
-        ]
-    };
-    
-    const blob = new Blob([JSON.stringify(dynamicManifest)], {type: 'application/json'});
-    const manifestLink = document.getElementById('dynamicManifest');
-    if(manifestLink) {
-        manifestLink.setAttribute('href', URL.createObjectURL(blob));
-    }
-},
             installPWA() {
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
@@ -751,82 +670,31 @@ updateManifestTheme(colorHex) {
                 } else alert("Para instalar: Pulsa 'Compartir' en tu navegador y luego 'Agregar a Inicio'.");
             },
 
-          renderCover() {
-    const salonName = currentConfig.nombre_salon;
-    const titleHtml = `${salonName}<span>.</span>`;
-    
-    // Aplicar al título principal
-    const coverTitle = document.getElementById('coverTitle');
-    coverTitle.innerHTML = titleHtml;
-    
-    // Aplicar al header
-    document.getElementById('headerTitle').innerHTML = titleHtml;
-    
-    // ✅ LOGO EN PANTALLA DE CARGA: SOLO "GLOW."
-    const loadingLogo = document.getElementById('loadingLogo');
-    loadingLogo.innerHTML = 'GLOW<span>.</span>';
-    
-    // ✅ NOMBRE DEL SALÓN EN PANTALLA DE CARGA
-    const loadingSalonName = document.getElementById('loadingSalonName');
-    if (loadingSalonName && salonName) {
-        loadingSalonName.textContent = salonName;
-    }
-    
-    // ✅ INICIAR ANIMACIÓN SECUENCIAL
-    this.startLoadingAnimation();
-    
-    if(currentConfig.imagen_portada) {
-        document.getElementById('cover-page').style.backgroundImage = `url('${currentConfig.imagen_portada}')`;
-    }
-},
+            renderCover() {
+                const salonName = currentConfig.nombre_salon;
+                const titleHtml = `${salonName}<span>.</span>`;
+                document.getElementById('coverTitle').innerHTML = titleHtml;
+                document.getElementById('headerTitle').innerHTML = titleHtml;
+                const loadingLogo = document.getElementById('loadingLogo');
+                loadingLogo.innerHTML = 'GLOW<span>.</span>';
+                const loadingSalonName = document.getElementById('loadingSalonName');
+                if (loadingSalonName && salonName) { loadingSalonName.textContent = salonName; }
+                this.startLoadingAnimation();
+                if(currentConfig.imagen_portada) {
+                    document.getElementById('cover-page').style.backgroundImage = `url('${currentConfig.imagen_portada}')`;
+                }
+            },
 
-// ✅ NUEVA FUNCIÓN: ANIMACIÓN DE CARGA SECUENCIAL
-startLoadingAnimation() {
-    setTimeout(() => {
-        const logo = document.getElementById('loadingLogo');
-        const salonName = document.getElementById('loadingSalonName');
-        
-        if (logo && salonName.textContent) {
-            // 1. Mover el logo hacia arriba
-            logo.style.animation = 'moveLogoUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards';
-            
-            // 2. Esperar un poco y mostrar el nombre del salón
-            setTimeout(() => {
-                salonName.style.display = 'block';
-            }, 300);
-        }
-    }, 800); // Esperar 0.8s para que termine la animación inicial del logo
-},
-
-// ✅ NUEVA FUNCIÓN: Ajuste inteligente del tamaño
-adjustTitleSize(salonName, element) {
-    // Esperar a que el DOM se renderice
-    setTimeout(() => {
-        const wordCount = salonName.split(' ').length;
-        const charCount = salonName.length;
-        
-        // Reglas de ajuste basadas en longitud
-        if (charCount > 20 || wordCount > 3) {
-            // Nombres muy largos: tamaño más pequeño
-            element.style.fontSize = 'clamp(2.2rem, 8vw, 3rem)';
-            element.style.lineHeight = '1.1';
-        } else if (charCount > 15 || wordCount > 2) {
-            // Nombres largos: tamaño medio
-            element.style.fontSize = 'clamp(2.5rem, 9vw, 3.5rem)';
-            element.style.lineHeight = '1.15';
-        } else {
-            // Nombres cortos: tamaño normal
-            element.style.fontSize = 'clamp(2.8rem, 10vw, 4rem)';
-            element.style.lineHeight = '1.2';
-        }
-        
-        // Ajuste especial para pantallas muy pequeñas
-        if (window.innerWidth < 400) {
-            const currentSize = parseFloat(window.getComputedStyle(element).fontSize);
-            element.style.fontSize = `${Math.min(currentSize, 3.2)}rem`;
-        }
-    }, 100);
-},
+            startLoadingAnimation() {
+                setTimeout(() => {
+                    const logo = document.getElementById('loadingLogo');
+                    const salonName = document.getElementById('loadingSalonName');
+                    if (logo && salonName.textContent) {
+                        logo.style.animation = 'moveLogoUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                        setTimeout(() => { salonName.style.display = 'block'; }, 300);
+                    }
+                }, 800);
+            },
 
             renderServices() {
                 const container = document.getElementById('servicesContainer');
@@ -921,6 +789,12 @@ adjustTitleSize(salonName, element) {
                 return true;
             },
 
+            shakeBtn() {
+                const btn = document.getElementById('mainBtn');
+                btn.style.animation = 'shake 0.3s';
+                setTimeout(() => btn.style.animation = '', 300);
+            },
+
             selectService(el, name) {
                 document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
                 el.classList.add('selected'); this.data.service = name;
@@ -951,26 +825,17 @@ adjustTitleSize(salonName, element) {
                         .eq('fecha', dateStr)
                         .neq('estado', 'cancelada');
 
-                    if(data) {
-                        bookedTimes = data.map(b => b.hora);
-                    }
-                } catch(err) {
-                    console.error("Error fetching bookings", err);
-                }
+                    if(data) { bookedTimes = data.map(b => b.hora); }
+                } catch(err) { console.error("Error fetching bookings", err); }
 
                 container.innerHTML = '';
                 baseTimes.forEach(t => {
                     const isTaken = bookedTimes.includes(t);
                     const div = document.createElement('div'); 
                     div.className = `time-slot ${isTaken ? 'disabled' : ''}`;
-                    
                     let content = t;
-                    if(isTaken) {
-                        content += '<span class="slot-label-busy">Ocupado</span>';
-                    }
-
+                    if(isTaken) { content += '<span class="slot-label-busy">Ocupado</span>'; }
                     div.innerHTML = content;
-                    
                     if(!isTaken) {
                         div.onclick = () => {
                             document.querySelectorAll('.time-slot').forEach(x => x.classList.remove('selected'));
@@ -1032,98 +897,99 @@ adjustTitleSize(salonName, element) {
                         hora: this.data.time,
                         estado: 'pendiente'
                     }]);
+
                     if(error) throw error;
                     document.getElementById('successModal').classList.add('active');
-                   
-                } catch(err) {
-                    console.error(err);
-                    alert("Error al guardar reserva. Intenta de nuevo.");
-                    btn.innerHTML = 'Reintentar'; btn.disabled = false;
-                }
-            },
 
-            shakeBtn() {
-                const btn = document.getElementById('mainBtn');
-                if(btn) {
-                    btn.style.transform = 'translateX(10px)';
-                    setTimeout(() => btn.style.transform = 'translateX(0)', 200);
+                } catch (error) {
+                    console.error(error);
+                    alert("Error al reservar: " + error.message);
+                    btn.innerHTML = 'Reintentar'; btn.disabled = false;
                 }
             }
         };
 
-        // --- 6. LÓGICA DEL CHAT ---
         const chatApp = {
-            isOpen: false, subscription: null,
-            init() { 
-                const container = document.getElementById('chatContainer');
-                const welcomeDiv = document.createElement('div');
-                welcomeDiv.className = 'msg admin';
-                welcomeDiv.id = 'welcomeMsg';
-                welcomeDiv.style.marginBottom = '20px';
-                const nombreEncargada = currentConfig.nombre_encargada.split(' ')[0];
-                welcomeDiv.innerHTML = `<b style="color:var(--color-fuchsia)">${currentConfig.nombre_encargada}</b><br>Hola 👋, soy ${nombreEncargada}. ¿En qué te puedo ayudar?`;
-                container.appendChild(welcomeDiv);
+            isOpen: false,
+            init() {
+                // Initial fetch messages if user is logged in
+                const phone = app.data.phone;
+                if(phone) this.subscribe(phone);
             },
-            enable() {
-                const btn = document.getElementById('headerChatBtn');
-                if(btn) { btn.classList.remove('hidden'); btn.style.cursor = 'pointer'; }
-                this.subscribe(); this.loadMessages();
-            },
+            enable() { document.getElementById('headerChatBtn').classList.remove('hidden'); },
             toggle() {
                 this.isOpen = !this.isOpen;
                 document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
-                if(this.isOpen) { document.getElementById('chatBadge').classList.remove('active'); this.scrollToBottom(); }
+                if(this.isOpen) {
+                    document.getElementById('chatBadge').classList.remove('active');
+                    this.scrollToBottom();
+                }
             },
-            async loadMessages() {
-                if(!app.data.phone) return;
-                const { data } = await supabaseClient.from('mensajes')
-                    .select('*')
+            handleEnter(e) { if(e.key === 'Enter') this.send(); },
+            
+            subscribe(phone) {
+                this.loadMessages(phone);
+                supabaseClient.channel('chat_client')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `telefono_cliente=eq.${phone}` }, 
+                    payload => {
+                        this.renderMessage(payload.new);
+                        if(!this.isOpen && payload.new.emisor === 'admin') {
+                            document.getElementById('chatBadge').classList.add('active');
+                        }
+                    })
+                    .subscribe();
+            },
+
+            async loadMessages(phone) {
+                const { data } = await supabaseClient.from('mensajes').select('*')
                     .eq('codigo_negocio', BUSINESS_CODE)
-                    .eq('telefono_cliente', app.data.phone)
+                    .eq('telefono_cliente', phone)
                     .order('created_at', { ascending: true });
                 
                 const container = document.getElementById('chatContainer');
-                const welcomeMsg = document.getElementById('welcomeMsg');
-                container.innerHTML = ''; 
-                if(welcomeMsg) container.appendChild(welcomeMsg); 
-                if(data) { data.forEach(msg => this.renderMessage(msg)); this.scrollToBottom(); }
+                container.innerHTML = '';
+                if(data) data.forEach(m => this.renderMessage(m));
             },
-            subscribe() {
-                if(this.subscription) return;
-                this.subscription = supabaseClient.channel('chat_cliente')
-                    .on('postgres_changes', 
-                        { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `codigo_negocio=eq.${BUSINESS_CODE}` }, 
-                        payload => {
-                            if(payload.new.telefono_cliente === app.data.phone) {
-                                this.renderMessage(payload.new);
-                                if(!this.isOpen && payload.new.emisor === 'admin') {
-                                    document.getElementById('chatBadge').classList.add('active');
-                                    if(navigator.vibrate) navigator.vibrate(50);
-                                } else { this.scrollToBottom(); }
-                            }
-                        }
-                    ).subscribe();
-            },
+
             renderMessage(msg) {
-                const div = document.createElement('div'); div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
-                div.textContent = msg.contenido; 
+                const div = document.createElement('div');
+                div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
+                div.textContent = msg.contenido;
                 document.getElementById('chatContainer').appendChild(div);
+                this.scrollToBottom();
             },
+
             async send() {
                 const input = document.getElementById('chatInput');
-                const text = input.value.trim(); if(!text) return;
+                const txt = input.value.trim();
+                if(!txt) return;
+
+                const phone = app.data.phone;
+                if(!phone) return alert("Completa el registro primero.");
+
                 input.value = '';
-                await supabaseClient.from('mensajes').insert([{ 
-                    codigo_negocio: BUSINESS_CODE, 
-                    telefono_cliente: app.data.phone, 
-                    emisor: 'cliente', 
-                    contenido: text, 
-                    leido: false 
+                await supabaseClient.from('mensajes').insert([{
+                    codigo_negocio: BUSINESS_CODE,
+                    telefono_cliente: phone,
+                    emisor: 'cliente',
+                    contenido: txt,
+                    leido: false
                 }]);
             },
-            handleEnter(e) { if(e.key === 'Enter') this.send(); },
-            scrollToBottom() { const el = document.getElementById('chatContainer'); setTimeout(() => el.scrollTop = el.scrollHeight, 100); }
+
+            scrollToBottom() {
+                const c = document.getElementById('chatContainer');
+                setTimeout(() => c.scrollTop = c.scrollHeight, 100);
+            }
         };
+        
+        // Estilos para la animación de sacudida
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
+        `;
+        document.head.appendChild(styleSheet);
+
     </script>
 </body>
 </html>
