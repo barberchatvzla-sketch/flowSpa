@@ -59,12 +59,12 @@
         }
         
         .brand-login { 
-            font-family: 'Playfair Display', serif; font-size: 3.5rem; margin-bottom: 40px; 
+            font-family: 'Playfair Display', serif; font-size: 3.5rem; margin-bottom: 30px; 
             color: var(--ios-text); letter-spacing: -1px;
         }
         .brand-login span { color: var(--ios-accent); }
 
-        .login-box { width: 100%; max-width: 320px; animation: slideUpFade 0.6s ease; }
+        .login-box { width: 100%; max-width: 320px; animation: slideUpFade 0.6s ease; display:flex; flex-direction:column; gap:15px; }
         
         .input-ios {
             width: 100%; padding: 18px; 
@@ -78,7 +78,7 @@
 
         .btn-ios {
             width: 100%; padding: 18px; border-radius: 50px; border: none;
-            font-weight: 700; cursor: pointer; font-size: 1rem; margin-top: 20px;
+            font-weight: 700; cursor: pointer; font-size: 1rem; margin-top: 10px;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         .btn-primary { 
@@ -87,9 +87,21 @@
         }
         .btn-primary:active { transform: scale(0.96); }
 
+        .login-alert {
+            color: var(--st-danger-txt); background: var(--st-danger-bg);
+            padding: 15px; border-radius: 12px; font-size: 0.9rem; 
+            text-align: center; display: none; font-weight: 600;
+            animation: shake 0.4s ease-in-out;
+        }
+
         @keyframes slideUpFade {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
         }
 
         /* --- 3. DASHBOARD LAYOUT (Full Screen + Bottom Nav) --- */
@@ -365,9 +377,13 @@
     <div id="login-screen">
         <div class="brand-login">GLOW<span>.</span></div>
         <div class="login-box">
-            <input type="text" id="businessCodeInput" class="input-ios" placeholder="CÓDIGO DE NEGOCIO" maxlength="20">
+            <input type="text" id="businessCodeInput" class="input-ios" placeholder="CÓDIGO DE NEGOCIO" maxlength="20" autocomplete="username">
+            
+            <input type="password" id="businessPassInput" class="input-ios" placeholder="CONTRASEÑA" maxlength="30" autocomplete="current-password">
+            
             <button class="btn-ios btn-primary" onclick="admin.login()">Ingresar</button>
-            <p id="loginError" style="color:var(--st-danger-txt); margin-top:15px; display:none; text-align:center;">Código requerido</p>
+            
+            <div id="loginAlert" class="login-alert">Credenciales Incorrectas</div>
         </div>
     </div>
 
@@ -622,29 +638,97 @@
             code: null, data: [], currentConfig: {...DEMO_CONFIG},
             
             init() {
+                // Verificamos si hay sesión guardada, pero la validaremos al hacer llamadas
+                // Opcional: Podrías hacer que el login sea persistente aquí, pero por seguridad
+                // para este ejemplo pediremos login si se recarga para asegurar el bloqueo.
+                // Si quieres persistencia, descomenta esto:
+                /*
                 const storedCode = localStorage.getItem('glowAdminCode');
                 if(storedCode) {
-                    document.getElementById('businessCodeInput').value = storedCode;
-                    this.login();
+                   // Aquí deberías re-validar con Supabase antes de dar acceso
+                   this.code = storedCode;
+                   document.getElementById('businessCodeInput').value = storedCode;
+                   // Forzamos login visualmente o re-validamos en background
                 }
+                */
             },
 
             async login() {
-                const val = document.getElementById('businessCodeInput').value.trim().toUpperCase();
-                if(!val) return;
-                this.code = val;
-                localStorage.setItem('glowAdminCode', val);
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'flex';
-                document.getElementById('dashCodeDisplay').textContent = `${this.code}`;
+                const codeInput = document.getElementById('businessCodeInput');
+                const passInput = document.getElementById('businessPassInput');
+                const alertBox = document.getElementById('loginAlert');
                 
-                this.loadData();
-                this.loadConfig();
-                
-                pushService.init(); 
+                const codeVal = codeInput.value.trim().toUpperCase();
+                const passVal = passInput.value.trim();
+
+                alertBox.style.display = 'none';
+
+                if(!codeVal || !passVal) {
+                    this.showLoginError("Ingresa código y contraseña");
+                    return;
+                }
+
+                try {
+                    // 1. VERIFICACIÓN DE CREDENCIALES (CÓDIGO + PASSWORD)
+                    // Esto evita que alguien entre solo con el código
+                    const { data, error } = await supabaseClient
+                        .from('negocios')
+                        .select('*')
+                        .eq('codigo_negocio', codeVal)
+                        .eq('password', passVal) 
+                        .single();
+
+                    if (error || !data) {
+                        this.showLoginError("Credenciales Incorrectas");
+                        return;
+                    }
+
+                    // 2. VERIFICACIÓN DE BLOQUEO (SUSPENSIÓN)
+                    // Si el superadmin puso estado_suscripcion en false
+                    if (data.estado_suscripcion === false) {
+                        this.showLoginError("⛔ CUENTA SUSPENDIDA<br>Contacta al soporte");
+                        return;
+                    }
+
+                    // LOGIN EXITOSO
+                    this.code = codeVal;
+                    localStorage.setItem('glowAdminCode', codeVal);
+                    
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'flex';
+                    document.getElementById('dashCodeDisplay').textContent = `${this.code}`;
+                    
+                    this.loadData();
+                    // Usamos la configuración recién traída
+                    this.currentConfig = {
+                        nombre_salon: data.nombre_salon || DEMO_CONFIG.nombre_salon,
+                        nombre_encargada: data.nombre_encargada || DEMO_CONFIG.nombre_encargada,
+                        imagen_portada: data.imagen_portada || DEMO_CONFIG.imagen_portada,
+                        logo_salon: data.logo_salon || DEMO_CONFIG.logo_salon,
+                        servicios: data.servicios || DEMO_CONFIG.servicios,
+                        theme_color: data.theme_color || DEMO_CONFIG.theme_color
+                    };
+                    this.applyTheme(this.currentConfig.theme_color);
+                    this.renderConfigForm();
+                    
+                    pushService.init(); 
+
+                } catch (e) {
+                    console.error(e);
+                    this.showLoginError("Error de conexión");
+                }
             },
 
-            logout() { localStorage.removeItem('glowAdminCode'); location.reload(); },
+            showLoginError(msg) {
+                const box = document.getElementById('loginAlert');
+                box.innerHTML = msg;
+                box.style.display = 'block';
+            },
+
+            logout() { 
+                localStorage.removeItem('glowAdminCode'); 
+                location.reload(); 
+            },
 
             switchTab(tabName, btn) {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -670,25 +754,8 @@
                 if(input && input.value !== colorHex) input.value = colorHex;
             },
 
-            async loadConfig() {
-                const { data } = await supabaseClient.from('negocios').select('*').eq('codigo_negocio', this.code).single();
-                if(data) {
-                    this.currentConfig = {
-                        nombre_salon: data.nombre_salon || DEMO_CONFIG.nombre_salon,
-                        nombre_encargada: data.nombre_encargada || DEMO_CONFIG.nombre_encargada,
-                        imagen_portada: data.imagen_portada || DEMO_CONFIG.imagen_portada,
-                        logo_salon: data.logo_salon || DEMO_CONFIG.logo_salon,
-                        servicios: data.servicios || DEMO_CONFIG.servicios,
-                        theme_color: data.theme_color || DEMO_CONFIG.theme_color
-                    };
-                }
-                // Aplicar el tema cargado
-                this.applyTheme(this.currentConfig.theme_color);
-                this.renderConfigForm();
-            },
-
             renderConfigForm() {
-                // CORRECCIÓN AQUI: Usamos window.location.origin para evitar doble slash //
+                // URL pública basada en el origen actual
                 const publicUrl = `${window.location.origin}/reserva/${this.code}`;
                 
                 document.getElementById('publicLinkDisplay').value = publicUrl;
