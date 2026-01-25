@@ -9,7 +9,7 @@
     "scope": "/"
     "display": "standalone",
     "background_color": "#F2F2F7",
-    "theme_color": "#E000E0",
+    "theme_color": "#fcfcfc",
     "orientation": "portrait",
     "categories": ["business", "productivity", "utilities"],
     "icons": [
