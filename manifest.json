@@ -1,12 +1,16 @@
+
+
 {
     "name": "Glow Admin",
     "short_name": "Admin",
     "description": "Panel Administrativo de Glow",
+    "id": "/index.html",
     "start_url": "/index.html",
     "display": "standalone",
     "background_color": "#F2F2F7",
     "theme_color": "#E000E0",
     "orientation": "portrait",
+    "categories": ["business", "productivity", "utilities"],
     "icons": [
         {
             "src": "https://i.ibb.co/nNTZgQmm/android-launchericon-192-192.png",
@@ -17,6 +21,22 @@
             "src": "https://i.ibb.co/fVJFNTqp/android-launchericon-512-512.png",
             "sizes": "512x512",
             "type": "image/png"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Vista Móvil del Panel"
+        },
+        {
+            "src": "https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Vista Escritorio del Panel"
         }
     ]
 }
