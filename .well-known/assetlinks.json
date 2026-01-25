@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "app.vercel.flow_spa_rose.twa",
-        "sha256_cert_fingerprints": ["44:D1:A7:BD:7C:D4:63:77:F1:50:48:20:E9:DA:A1:8E:9A:FA:E4:AC:F1:2A:8B:C0:40:B8:B7:BB:8B:15:44:B0"]
+        "sha256_cert_fingerprints": ["E4:42:05:7D:3E:FE:AC:C2:67:E1:6B:D8:65:D7:27:74:2E:DF:6A:49:55:C4:92:8A:F6:18:E8:10:7B:EF:C7:7B"]
       }
     }]
