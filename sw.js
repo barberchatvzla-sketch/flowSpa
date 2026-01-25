@@ -1,70 +1,93 @@
-// --- CONFIGURACIÓN DE IMÁGENES ---
+const CACHE_NAME = 'glow-admin-v1';
+const ASSETS_TO_CACHE = [
+  '/index.html',
+  'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap',
+  'https://unpkg.com/@phosphor-icons/web',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+];
 
-// 1. EL LOGO GRANDE (Aparece a la derecha o al expandir)
-// Este puede ser a color. Usamos el que ya tienes.
+// --- 1. INSTALACIÓN (Cachear recursos estáticos) ---
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
+  self.skipWaiting();
+});
+
+// --- 2. ACTIVACIÓN (Limpiar cachés viejas) ---
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// --- 3. FETCH (Estrategia: Network First, fallback a Cache) ---
+// Esto asegura que el admin siempre vea datos frescos, pero si no hay internet, carga la interfaz.
+self.addEventListener('fetch', (event) => {
+  // Solo interceptamos peticiones GET (no POST a Supabase)
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Si la red responde bien, guardamos copia en caché y retornamos
+        const resClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, resClone);
+        });
+        return response;
+      })
+      .catch(() => {
+        // Si falla la red, intentamos servir desde caché
+        return caches.match(event.request);
+      })
+  );
+});
+
+// --- 4. NOTIFICACIONES PUSH (Tu código existente) ---
 const GLOW_ICON_GRANDE = 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
-
-// 2. EL ICONO PEQUEÑO (Badge - Barra de estado)
-// IMPORTANTE: Cambia esta URL por tu imagen en SILUETA BLANCA y fondo transparente.
-// Si dejas el logo a color aquí, Android volverá a poner el logo de Google.
-const GLOW_BADGE_BLANCO = 'https://i.ibb.co/sd4ygWGr/Glow-20260112-165349-0000.png'; // <- ¡CAMBIAR ESTO POR LA VERSIÓN BLANCA!
+const GLOW_BADGE_BLANCO = 'https://i.ibb.co/sd4ygWGr/Glow-20260112-165349-0000.png';
 
 self.addEventListener('push', function(event) {
-    // Intentar leer los datos enviados desde Supabase/Servidor
     const data = event.data ? event.data.json() : {};
-    
-    // Definir Título y Mensaje por defecto si no llegan
     const title = data.title || 'Glow Admin';
-    const message = data.message || 'Nueva actividad en el sistema';
+    const message = data.message || 'Nueva actividad';
 
-    // Opciones de la notificación
     const options = {
         body: message,
-        
-        // Imagen principal (A la derecha del texto)
-        icon: GLOW_ICON_GRANDE, 
-        
-        // Icono de la barra de estado (Monocromático/Blanco obligatorio para Android)
+        icon: GLOW_ICON_GRANDE,
         badge: GLOW_BADGE_BLANCO,
-        
-        // Patrón de vibración [vibrar, pausa, vibrar]
         vibrate: [100, 50, 100],
-        
-        // Datos para usar al hacer clic (abrir la app)
-        data: {
-            url: '/index.html' // Asegura que abra tu panel admin
-        },
-        
-        // Evita que se amontonen muchas notificaciones, reemplaza la anterior si tiene el mismo tag
+        data: { url: '/index.html' },
         tag: 'glow-notification',
         renotify: true
     };
 
-    event.waitUntil(
-        self.registration.showNotification(title, options)
-    );
+    event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// --- MANEJO DEL CLIC EN LA NOTIFICACIÓN ---
-// Esto es vital para que al tocar la notificación se abra tu APK/Web
 self.addEventListener('notificationclick', function(event) {
-    // 1. Cerrar la notificación inmediatamente
     event.notification.close();
-
-    // 2. Intentar enfocar una ventana abierta o abrir una nueva
     event.waitUntil(
         clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
-            // Si ya hay una ventana abierta, enfocarla
             for (let i = 0; i < clientList.length; i++) {
                 const client = clientList[i];
                 if (client.url.includes('index.html') && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Si no hay ventana abierta, abrir una nueva
-            if (clients.openWindow) {
-                return clients.openWindow('/index.html');
-            }
+            if (clients.openWindow) return clients.openWindow('/index.html');
         })
     );
 });
