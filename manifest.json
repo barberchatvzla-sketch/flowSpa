@@ -1,19 +1,20 @@
 {
-    "name": "Glow App",
-    "short_name": "Glow",
-    "description": "Reserva tu cita de belleza",
-    "start_url": "/spa.html",
+    "name": "Glow Admin",
+    "short_name": "Admin",
+    "description": "Panel Administrativo de Glow",
+    "start_url": "/index.html",
     "display": "standalone",
-    "background_color": "#000000",
-    "theme_color": "#000000",
+    "background_color": "#F2F2F7",
+    "theme_color": "#E000E0",
+    "orientation": "portrait",
     "icons": [
         {
-            "src": "https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png",
+            "src": "https://i.ibb.co/nNTZgQmm/android-launchericon-192-192.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png",
+            "src": "https://i.ibb.co/fVJFNTqp/android-launchericon-512-512.png",
             "sizes": "512x512",
             "type": "image/png"
         }
