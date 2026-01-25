@@ -5,6 +5,17 @@
       "memory": 1024
     }
   },
+  "headers": [
+    {
+      "source": "/.well-known/assetlinks.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/reserva/:ref",
