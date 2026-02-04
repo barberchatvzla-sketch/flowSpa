@@ -887,64 +887,55 @@
                 adminChat.init();
             },
 
-         subscribe() {
-                // 1. Limpiamos canal previo si existe
+        subscribe() {
+                // 1. Limpiamos canal previo para evitar duplicados
                 if (this.realtimeChannel) {
                     supabaseClient.removeChannel(this.realtimeChannel);
                 }
 
-                // 2. Creamos un canal SIN FILTROS para asegurar que llegue todo
-                const channelId = `admin_global_${Date.now()}`;
-                
+                // Creamos un ID único para el canal
+                const channelId = `admin_room_${this.code}`;
+                console.log("🔌 Conectando a Realtime:", channelId);
+
+                // 2. Suscripción CON FILTRO (Crucial para estabilidad)
+                // Escuchamos SOLO las reservas de ESTE negocio
                 this.realtimeChannel = supabaseClient.channel(channelId)
                     .on('postgres_changes', { 
-                        event: '*',           // Escuchar INSERT, UPDATE, DELETE
+                        event: '*', 
                         schema: 'public', 
-                        table: 'reservas'     // <--- QUITAMOS EL FILTRO 'filter: ...'
+                        table: 'reservas',
+                        filter: `codigo_negocio=eq.${this.code}` 
                     }, payload => {
                         
-                        console.log('🔥 EVENTO REALTIME RECIBIDO:', payload);
+                        console.log('🔥 CAMBIO EN RESERVAS:', payload);
 
-                        // 3. Filtramos manualmente aquí (más seguro para depurar)
-                        // Verificamos si la reserva pertenece a este negocio
-                        const incomingCode = (payload.new && payload.new.codigo_negocio) || (payload.old && payload.old.codigo_negocio);
-                        
-                        // Normalizamos a mayúsculas para evitar errores de "Glow" vs "GLOW"
-                        if (incomingCode && incomingCode.toUpperCase() === this.code.toUpperCase()) {
-                            
-                            if (payload.eventType === 'INSERT') {
-                                this.data.unshift(payload.new);
-                                notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
-                            } 
-                            else if (payload.eventType === 'UPDATE') {
-                                const index = this.data.findIndex(r => r.id === payload.new.id);
-                                if (index !== -1) this.data[index] = payload.new;
-                            }
-                            else if (payload.eventType === 'DELETE') {
-                                this.data = this.data.filter(r => r.id !== payload.old.id);
-                            }
-
-                            // Actualizar UI
-                            this.renderList();
-                            adminCalendar.render();
-                        } else {
-                            console.log("⚠️ Evento recibido pero de otro negocio:", incomingCode);
+                        if (payload.eventType === 'INSERT') {
+                            this.data.unshift(payload.new);
+                            notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                        } 
+                        else if (payload.eventType === 'UPDATE') {
+                            const index = this.data.findIndex(r => r.id === payload.new.id);
+                            if (index !== -1) this.data[index] = payload.new;
                         }
+                        else if (payload.eventType === 'DELETE') {
+                            this.data = this.data.filter(r => r.id !== payload.old.id);
+                        }
+
+                        // Actualizar UI inmediatamente
+                        this.renderList();
+                        adminCalendar.render();
                     })
                     .subscribe((status, err) => {
-            // ESTO ES CLAVE PARA DIAGNOSTICAR
-            console.log(`📡 Estado de conexión Realtime: ${status}`);
-            
-            if (status === 'SUBSCRIBED') {
-                console.log('✅ Conectado exitosamente esperando eventos...');
-            }
-            if (status === 'CHANNEL_ERROR') {
-                console.error('❌ Error en el canal Realtime:', err);
-            }
-            if (status === 'TIMED_OUT') {
-                console.error('⚠️ Tiempo de espera agotado conectando a Realtime');
-            }
-        });
+                        console.log(`📡 Estado Conexión: ${status}`);
+                        
+                        if (status === 'SUBSCRIBED') {
+                            console.log('✅ LISTO: Esperando reservas en tiempo real...');
+                        }
+                        
+                        if (status === 'CHANNEL_ERROR') {
+                            console.error('❌ Error de Canal. Revisa: 1. Tabla Editor -> Enable Realtime. 2. Tu conexión a internet.', err);
+                        }
+                    });
             },
             filter(status) {
                 this.renderList(status);
@@ -1221,5 +1212,6 @@
     </script>
 </body>
 </html>
+
 
 
