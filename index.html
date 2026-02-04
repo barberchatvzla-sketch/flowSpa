@@ -887,50 +887,56 @@
                 adminChat.init();
             },
 
-            subscribe() {
-                // Limpiar suscripción previa si existe
+         subscribe() {
+                // 1. Limpiamos canal previo si existe
                 if (this.realtimeChannel) {
                     supabaseClient.removeChannel(this.realtimeChannel);
                 }
 
-                // Usamos un canal único para este negocio para evitar mezclas
-                const channelId = `admin_reservas_${this.code}`;
+                // 2. Creamos un canal SIN FILTROS para asegurar que llegue todo
+                const channelId = `admin_global_${Date.now()}`;
                 
                 this.realtimeChannel = supabaseClient.channel(channelId)
                     .on('postgres_changes', { 
-                        event: '*', // Escuchar TODOS los eventos (INSERT, UPDATE, DELETE)
+                        event: '*',           // Escuchar INSERT, UPDATE, DELETE
                         schema: 'public', 
-                        table: 'reservas', 
-                        filter: `codigo_negocio=eq.${this.code}` 
+                        table: 'reservas'     // <--- QUITAMOS EL FILTRO 'filter: ...'
                     }, payload => {
-                        console.log('Evento Realtime Recibido:', payload);
                         
-                        if (payload.eventType === 'INSERT') {
-                            this.data.unshift(payload.new);
-                            notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
-                        } 
-                        else if (payload.eventType === 'UPDATE') {
-                            // Actualizar la reserva existente en el array local
-                            const index = this.data.findIndex(r => r.id === payload.new.id);
-                            if (index !== -1) {
-                                this.data[index] = payload.new;
-                            }
-                        }
-                        else if (payload.eventType === 'DELETE') {
-                            this.data = this.data.filter(r => r.id !== payload.old.id);
-                        }
+                        console.log('🔥 EVENTO REALTIME RECIBIDO:', payload);
 
-                        // Actualizar UI
-                        this.renderList();
-                        adminCalendar.render();
+                        // 3. Filtramos manualmente aquí (más seguro para depurar)
+                        // Verificamos si la reserva pertenece a este negocio
+                        const incomingCode = (payload.new && payload.new.codigo_negocio) || (payload.old && payload.old.codigo_negocio);
+                        
+                        // Normalizamos a mayúsculas para evitar errores de "Glow" vs "GLOW"
+                        if (incomingCode && incomingCode.toUpperCase() === this.code.toUpperCase()) {
+                            
+                            if (payload.eventType === 'INSERT') {
+                                this.data.unshift(payload.new);
+                                notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                            } 
+                            else if (payload.eventType === 'UPDATE') {
+                                const index = this.data.findIndex(r => r.id === payload.new.id);
+                                if (index !== -1) this.data[index] = payload.new;
+                            }
+                            else if (payload.eventType === 'DELETE') {
+                                this.data = this.data.filter(r => r.id !== payload.old.id);
+                            }
+
+                            // Actualizar UI
+                            this.renderList();
+                            adminCalendar.render();
+                        } else {
+                            console.log("⚠️ Evento recibido pero de otro negocio:", incomingCode);
+                        }
                     })
                     .subscribe((status) => {
                         if (status === 'SUBSCRIBED') {
-                            console.log('🟢 Conectado a tiempo real de reservas');
+                            console.log('✅ Escuchando cambios en la tabla reservas (Modo Sin Filtro)');
                         }
                     });
             },
-
             filter(status) {
                 this.renderList(status);
             },
@@ -1206,3 +1212,4 @@
     </script>
 </body>
 </html>
+
