@@ -641,16 +641,47 @@
             currentConfig: {...DEMO_CONFIG},
             realtimeChannel: null, // Guardamos la referencia para limpiar si es necesario
             
-            init() {
-                // Verificamos si hay sesión guardada
-                /*
+            async init() {
+                // 1. Buscamos si hay un código guardado en el celular/PC
                 const storedCode = localStorage.getItem('glowAdminCode');
+                
                 if(storedCode) {
-                   // Aquí deberías re-validar con Supabase antes de dar acceso
+                   console.log("Sesión encontrada:", storedCode);
                    this.code = storedCode;
-                   document.getElementById('businessCodeInput').value = storedCode;
+                   
+                   // 2. Ocultamos login y mostramos dashboard inmediatamente
+                   document.getElementById('login-screen').style.display = 'none';
+                   document.getElementById('dashboard').style.display = 'flex';
+                   document.getElementById('dashCodeDisplay').textContent = this.code;
+
+                   // 3. Cargamos la configuración del negocio (Logo, colores...)
+                   try {
+                       const { data } = await supabaseClient
+                           .from('negocios')
+                           .select('*')
+                           .eq('codigo_negocio', this.code)
+                           .single();
+
+                       if (data) {
+                           this.currentConfig = {
+                                nombre_salon: data.nombre_salon || DEMO_CONFIG.nombre_salon,
+                                nombre_encargada: data.nombre_encargada || DEMO_CONFIG.nombre_encargada,
+                                imagen_portada: data.imagen_portada || DEMO_CONFIG.imagen_portada,
+                                logo_salon: data.logo_salon || DEMO_CONFIG.logo_salon,
+                                servicios: data.servicios || DEMO_CONFIG.servicios,
+                                theme_color: data.theme_color || DEMO_CONFIG.theme_color
+                           };
+                           this.applyTheme(this.currentConfig.theme_color);
+                           this.renderConfigForm();
+                       }
+                   } catch (e) { console.error("Error cargando config al inicio", e); }
+
+                   // 4. Cargamos los datos y conectamos Realtime
+                   this.loadData();
+                   
+                   // 5. Iniciamos Service Worker (Notificaciones)
+                   pushService.init();
                 }
-                */
             },
 
             async login() {
@@ -1155,43 +1186,15 @@
             swRegistration: null,
             
             async init() {
-                // 1. Buscamos si hay un código guardado en el celular/PC
-                const storedCode = localStorage.getItem('glowAdminCode');
-                
-                if(storedCode) {
-                   console.log("Sesión encontrada:", storedCode);
-                   this.code = storedCode;
-                   
-                   // 2. Ocultamos login y mostramos dashboard inmediatamente
-                   document.getElementById('login-screen').style.display = 'none';
-                   document.getElementById('dashboard').style.display = 'flex';
-                   document.getElementById('dashCodeDisplay').textContent = this.code;
-
-                   // 3. Cargamos la configuración del negocio (Logo, colores...)
-                   try {
-                       const { data } = await supabaseClient
-                           .from('negocios')
-                           .select('*')
-                           .eq('codigo_negocio', this.code)
-                           .single();
-
-                       if (data) {
-                           this.currentConfig = {
-                                nombre_salon: data.nombre_salon || DEMO_CONFIG.nombre_salon,
-                                nombre_encargada: data.nombre_encargada || DEMO_CONFIG.nombre_encargada,
-                                imagen_portada: data.imagen_portada || DEMO_CONFIG.imagen_portada,
-                                logo_salon: data.logo_salon || DEMO_CONFIG.logo_salon,
-                                servicios: data.servicios || DEMO_CONFIG.servicios,
-                                theme_color: data.theme_color || DEMO_CONFIG.theme_color
-                           };
-                           this.applyTheme(this.currentConfig.theme_color);
-                           this.renderConfigForm();
-                       }
-                   } catch (e) { console.error("Error cargando config al inicio", e); }
-
-                   // 4. Cargamos los datos y conectamos Realtime
-                   this.loadData();
-                   pushService.init();
+                // REGISTRAR SERVICE WORKER SI EXISTE
+                if ('serviceWorker' in navigator) {
+                    try {
+                        this.swRegistration = await navigator.serviceWorker.register('sw.js');
+                        console.log('SW Registrado para PWA');
+                        this.updateBtnUI();
+                    } catch (error) {
+                        console.error('SW Error:', error);
+                    }
                 }
             },
 
@@ -1242,7 +1245,3 @@
     </script>
 </body>
 </html>
-
-
-
-
