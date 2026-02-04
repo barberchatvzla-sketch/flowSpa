@@ -636,20 +636,19 @@
         };
 
         const admin = {
-            code: null, data: [], currentConfig: {...DEMO_CONFIG},
+            code: null, 
+            data: [], 
+            currentConfig: {...DEMO_CONFIG},
+            realtimeChannel: null, // Guardamos la referencia para limpiar si es necesario
             
             init() {
-                // Verificamos si hay sesión guardada, pero la validaremos al hacer llamadas
-                // Opcional: Podrías hacer que el login sea persistente aquí, pero por seguridad
-                // para este ejemplo pediremos login si se recarga para asegurar el bloqueo.
-                // Si quieres persistencia, descomenta esto:
+                // Verificamos si hay sesión guardada
                 /*
                 const storedCode = localStorage.getItem('glowAdminCode');
                 if(storedCode) {
                    // Aquí deberías re-validar con Supabase antes de dar acceso
                    this.code = storedCode;
                    document.getElementById('businessCodeInput').value = storedCode;
-                   // Forzamos login visualmente o re-validamos en background
                 }
                 */
             },
@@ -670,8 +669,7 @@
                 }
 
                 try {
-                    // 1. VERIFICACIÓN DE CREDENCIALES (CÓDIGO + PASSWORD)
-                    // Esto evita que alguien entre solo con el código
+                    // 1. VERIFICACIÓN DE CREDENCIALES
                     const { data, error } = await supabaseClient
                         .from('negocios')
                         .select('*')
@@ -684,8 +682,7 @@
                         return;
                     }
 
-                    // 2. VERIFICACIÓN DE BLOQUEO (SUSPENSIÓN)
-                    // Si el superadmin puso estado_suscripcion en false
+                    // 2. VERIFICACIÓN DE BLOQUEO
                     if (data.estado_suscripcion === false) {
                         this.showLoginError("⛔ CUENTA SUSPENDIDA<br>Contacta al soporte");
                         return;
@@ -727,6 +724,7 @@
             },
 
             logout() { 
+                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
                 localStorage.removeItem('glowAdminCode'); 
                 location.reload(); 
             },
@@ -748,15 +746,12 @@
             },
 
             applyTheme(colorHex) {
-                // Actualiza visualmente la interfaz del admin
                 document.documentElement.style.setProperty('--ios-accent', colorHex);
-                // Actualizar input por si fue llamado externamente
                 const input = document.getElementById('cfgColor');
                 if(input && input.value !== colorHex) input.value = colorHex;
             },
 
             renderConfigForm() {
-                // URL pública basada en el origen actual
                 const publicUrl = `${window.location.origin}/reserva/${this.code}`;
                 
                 document.getElementById('publicLinkDisplay').value = publicUrl;
@@ -766,11 +761,8 @@
                 document.getElementById('cfgEncargada').value = this.currentConfig.nombre_encargada;
                 document.getElementById('cfgPortada').value = this.currentConfig.imagen_portada;
                 document.getElementById('cfgLogo').value = this.currentConfig.logo_salon;
-                
-                // Set color
                 document.getElementById('cfgColor').value = this.currentConfig.theme_color;
                 
-                // Previsualización del Logo
                 document.getElementById('previewLogo').src = this.currentConfig.logo_salon;
                 
                 const list = document.getElementById('cfgServicesList');
@@ -798,49 +790,30 @@
                 });
             },
 
-            // --- FUNCIÓN DE SUBIDA DE IMÁGENES ---
             async uploadImage(input, targetInputId) {
                 const file = input.files[0];
                 if (!file) return;
 
-                // Feedback visual simple en el label
-                const label = input.parentElement;
-                
                 try {
                     notifications.show('Subiendo...', 'Por favor espera.', 'info');
-
                     const fileName = `${this.code}/${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-                    
-                    // Subir al bucket 'glow_files'
-                    const { data, error } = await supabaseClient.storage
-                        .from('glow_files')
-                        .upload(fileName, file);
+                    const { data, error } = await supabaseClient.storage.from('glow_files').upload(fileName, file);
 
                     if (error) throw error;
 
-                    // Obtener URL Pública
-                    const { data: urlData } = supabaseClient.storage
-                        .from('glow_files')
-                        .getPublicUrl(fileName);
-
+                    const { data: urlData } = supabaseClient.storage.from('glow_files').getPublicUrl(fileName);
                     const publicUrl = urlData.publicUrl;
 
-                    // Actualizar input objetivo
                     document.getElementById(targetInputId).value = publicUrl;
-
-                    // Si es el logo, actualizar preview inmediatamente
                     if(targetInputId === 'cfgLogo') {
                         document.getElementById('previewLogo').src = publicUrl;
                     }
-                    
                     notifications.show('Éxito', 'Imagen subida correctamente.');
-
                 } catch (error) {
                     console.error('Error subiendo imagen:', error);
                     alert('Error subiendo imagen: ' + error.message);
                 }
             },
-            // -------------------------------------
 
             updateServiceField(index, field, value) {
                 if(this.currentConfig.servicios[index]) {
@@ -879,7 +852,7 @@
                 this.currentConfig.nombre_encargada = document.getElementById('cfgEncargada').value;
                 this.currentConfig.imagen_portada = document.getElementById('cfgPortada').value;
                 this.currentConfig.logo_salon = document.getElementById('cfgLogo').value;
-                this.currentConfig.theme_color = document.getElementById('cfgColor').value; // Guardar Color
+                this.currentConfig.theme_color = document.getElementById('cfgColor').value; 
 
                 const { error } = await supabaseClient.from('negocios').upsert({
                     codigo_negocio: this.code,
@@ -899,23 +872,63 @@
             },
 
             async loadData() {
-                const { data } = await supabaseClient.from('reservas').select('*').eq('codigo_negocio', this.code).order('created_at', { ascending: false });
+                // Carga inicial
+                const { data } = await supabaseClient.from('reservas')
+                    .select('*')
+                    .eq('codigo_negocio', this.code)
+                    .order('created_at', { ascending: false });
+                
                 if(data) {
                     this.data = data;
                     this.renderList();
                     adminCalendar.init();
-                    this.subscribe();
+                    this.subscribe(); // Iniciar suscripción Realtime robusta
                 }
                 adminChat.init();
             },
 
             subscribe() {
-                supabaseClient.channel('admin_res').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reservas', filter: `codigo_negocio=eq.${this.code}` }, payload => {
-                    this.data.unshift(payload.new);
-                    this.renderList();
-                    adminCalendar.render();
-                    notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
-                }).subscribe();
+                // Limpiar suscripción previa si existe
+                if (this.realtimeChannel) {
+                    supabaseClient.removeChannel(this.realtimeChannel);
+                }
+
+                // Usamos un canal único para este negocio para evitar mezclas
+                const channelId = `admin_reservas_${this.code}`;
+                
+                this.realtimeChannel = supabaseClient.channel(channelId)
+                    .on('postgres_changes', { 
+                        event: '*', // Escuchar TODOS los eventos (INSERT, UPDATE, DELETE)
+                        schema: 'public', 
+                        table: 'reservas', 
+                        filter: `codigo_negocio=eq.${this.code}` 
+                    }, payload => {
+                        console.log('Evento Realtime Recibido:', payload);
+                        
+                        if (payload.eventType === 'INSERT') {
+                            this.data.unshift(payload.new);
+                            notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                        } 
+                        else if (payload.eventType === 'UPDATE') {
+                            // Actualizar la reserva existente en el array local
+                            const index = this.data.findIndex(r => r.id === payload.new.id);
+                            if (index !== -1) {
+                                this.data[index] = payload.new;
+                            }
+                        }
+                        else if (payload.eventType === 'DELETE') {
+                            this.data = this.data.filter(r => r.id !== payload.old.id);
+                        }
+
+                        // Actualizar UI
+                        this.renderList();
+                        adminCalendar.render();
+                    })
+                    .subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            console.log('🟢 Conectado a tiempo real de reservas');
+                        }
+                    });
             },
 
             filter(status) {
@@ -947,9 +960,16 @@
             },
 
             async updateStatus(id, st) {
+                // Actualización optimista UI (Feedback instantáneo)
+                const itemIndex = this.data.findIndex(r => r.id === id);
+                if(itemIndex !== -1) {
+                    this.data[itemIndex].estado = st;
+                    this.renderList();
+                    adminCalendar.render();
+                }
+
+                // Actualización Backend
                 await supabaseClient.from('reservas').update({ estado: st }).eq('id', id);
-                const item = this.data.find(r => r.id === id); if(item) item.estado = st;
-                this.renderList(); adminCalendar.render();
             }
         };
 
@@ -1010,7 +1030,7 @@
         };
 
         const adminChat = {
-            activePhone: null, conversations: {},
+            activePhone: null, conversations: {}, realtimeChannel: null,
             init() { 
                 if(!admin.code) return;
                 this.loadConversations();
@@ -1030,23 +1050,33 @@
                 }
             },
             subscribe() {
-                supabaseClient.channel('chat_admin').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `codigo_negocio=eq.${admin.code}` }, payload => {
-                    const m = payload.new;
-                    if(!this.conversations[m.telefono_cliente]) this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
-                    this.conversations[m.telefono_cliente].msgs.push(m);
-                    this.conversations[m.telefono_cliente].last = m.contenido;
-                    
-                    if(m.emisor === 'cliente') {
-                        if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
-                        else { 
-                            this.conversations[m.telefono_cliente].unread = true; 
-                            document.getElementById('msgNotify').style.display = 'block';
-                            notifications.show('Mensaje Nuevo', `${m.telefono_cliente}`, 'mensaje');
-                        }
-                    } else if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
-                    
-                    this.renderList();
-                }).subscribe();
+                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
+                
+                const channelId = `admin_chat_${admin.code}`;
+                this.realtimeChannel = supabaseClient.channel(channelId)
+                    .on('postgres_changes', { 
+                        event: 'INSERT', 
+                        schema: 'public', 
+                        table: 'mensajes', 
+                        filter: `codigo_negocio=eq.${admin.code}` 
+                    }, payload => {
+                        const m = payload.new;
+                        if(!this.conversations[m.telefono_cliente]) this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
+                        this.conversations[m.telefono_cliente].msgs.push(m);
+                        this.conversations[m.telefono_cliente].last = m.contenido;
+                        
+                        if(m.emisor === 'cliente') {
+                            if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
+                            else { 
+                                this.conversations[m.telefono_cliente].unread = true; 
+                                document.getElementById('msgNotify').style.display = 'block';
+                                notifications.show('Mensaje Nuevo', `${m.telefono_cliente}`, 'mensaje');
+                            }
+                        } else if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
+                        
+                        this.renderList();
+                    })
+                    .subscribe();
             },
             renderList() {
                 const list = document.getElementById('inboxList'); list.innerHTML = '';
@@ -1117,19 +1147,17 @@
         const pushService = {
             btn: document.getElementById('btn-notif-status'),
             swRegistration: null,
-async init() {
-        // Quitar la comprobación estricta de PushManager aquí para permitir instalar PWA 
-        // aunque las notificaciones no estén activas todavía.
-        if ('serviceWorker' in navigator) {
-            try {
-                this.swRegistration = await navigator.serviceWorker.register('sw.js');
-                console.log("SW Registrado para PWA");
-                this.updateBtnUI(); // Esto revisa si hay notificaciones activas
-            } catch (error) { 
-                console.error("SW Error:", error); 
-            }
-        }
-    },
+            async init() {
+                if ('serviceWorker' in navigator) {
+                    try {
+                        this.swRegistration = await navigator.serviceWorker.register('sw.js');
+                        console.log("SW Registrado para PWA");
+                        this.updateBtnUI(); 
+                    } catch (error) { 
+                        console.error("SW Error:", error); 
+                    }
+                }
+            },
 
             async enable() {
                 const permission = await Notification.requestPermission();
@@ -1178,4 +1206,3 @@ async init() {
     </script>
 </body>
 </html>
-
