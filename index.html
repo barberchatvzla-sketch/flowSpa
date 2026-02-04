@@ -931,11 +931,20 @@
                             console.log("⚠️ Evento recibido pero de otro negocio:", incomingCode);
                         }
                     })
-                    .subscribe((status) => {
-                        if (status === 'SUBSCRIBED') {
-                            console.log('✅ Escuchando cambios en la tabla reservas (Modo Sin Filtro)');
-                        }
-                    });
+                    .subscribe((status, err) => {
+            // ESTO ES CLAVE PARA DIAGNOSTICAR
+            console.log(`📡 Estado de conexión Realtime: ${status}`);
+            
+            if (status === 'SUBSCRIBED') {
+                console.log('✅ Conectado exitosamente esperando eventos...');
+            }
+            if (status === 'CHANNEL_ERROR') {
+                console.error('❌ Error en el canal Realtime:', err);
+            }
+            if (status === 'TIMED_OUT') {
+                console.error('⚠️ Tiempo de espera agotado conectando a Realtime');
+            }
+        });
             },
             filter(status) {
                 this.renderList(status);
@@ -1212,4 +1221,5 @@
     </script>
 </body>
 </html>
+
 
