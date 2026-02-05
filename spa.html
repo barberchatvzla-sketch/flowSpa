@@ -236,6 +236,29 @@
         }
         #new-user-fields.visible { display: block; opacity: 1; transform: translateY(0); }
 
+        /* FOTO PROFILE STYLE */
+        #photo-section {
+            display:none; 
+            flex-direction:column; 
+            align-items:center; 
+            margin-bottom: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+        .photo-wrapper {
+            position:relative; width: 80px; height: 80px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-radius: 50%;
+        }
+        .photo-preview {
+            width:100%; height:100%; border-radius:50%; object-fit:cover; 
+            border: 2px solid var(--color-fuchsia);
+            background: #f0f0f0;
+        }
+        .photo-btn {
+            position:absolute; bottom:0; right:0; background:var(--color-black); color:white; 
+            border-radius:50%; padding:6px; display:flex; align-items:center; justify-content:center;
+            border: 2px solid white;
+        }
+
         #welcome-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: white; z-index: 50; display: none; flex-direction: column;
@@ -402,24 +425,23 @@
                 </div>
 
                 <div id="new-user-fields">
-                    <p style="color:var(--color-fuchsia); font-size:0.9rem; margin-bottom:15px;">¡Parece que es tu primera vez. Regístrate abajo!</p>
+                    <p style="color:var(--color-fuchsia); font-size:0.9rem; margin-bottom:15px;">¡Parece que es tu primera vez. Regístrate!</p>
+                    
+                    <div id="photo-section">
+                        <div class="photo-wrapper">
+                            <img id="preview-img" class="photo-preview" src="https://via.placeholder.com/80?text=Foto">
+                            
+                            <input type="file" id="file-input" accept="image/*" 
+                                   style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:10;"
+                                   onchange="app.procesarFoto(this)">
+                            
+                            <div class="photo-btn">
+                                <i class="ph ph-camera"></i>
+                            </div>
+                        </div>
+                        <small style="color:#888; margin-top:5px; font-size:0.8rem;">Sube tu foto</small>
+                    </div>
                     <div class="input-group">
-
-                        <div id="photo-section" style="display:none; flex-direction:column; align-items:center; margin-bottom: 20px;">
-    <div style="position:relative; width: 80px; height: 80px;">
-        <img id="preview-img" src="https://via.placeholder.com/80?text=Foto" 
-             style="width:100%; height:100%; border-radius:50%; object-fit:cover; border: 2px solid var(--ios-accent);">
-        
-        <input type="file" id="file-input" accept="image/*" 
-               style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;"
-               onchange="app.procesarFoto(this)">
-        
-        <div style="position:absolute; bottom:0; right:0; background:black; color:white; border-radius:50%; padding:4px;">
-            <i class="ph ph-camera"></i>
-        </div>
-    </div>
-    <small style="color:#888; margin-top:5px;">Toca para agregar foto</small>
-</div>
                         <input type="text" id="inputName" placeholder="Tu Nombre" autocomplete="given-name">
                     </div>
                     <div class="input-group">
@@ -510,17 +532,12 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHpraHV2ZnN0bW1sam96cGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NjQzMzksImV4cCI6MjA4NDM0MDMzOX0.uWRs0xB68ltUVEJPICFuS9vYCmDN06KTUfgbS_4W9WU';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- 2. OBTENER CÓDIGO DE NEGOCIO (LÓGICA ACTUALIZADA) ---
-        // 1. Intentamos leer la variable inyectada por preview.js (Prioridad Máxima)
+        // --- 2. OBTENER CÓDIGO DE NEGOCIO ---
         let rawRef = window.NEGOCIO_ID_SERVER;
-
-        // 2. Si no hay inyección (ej. desarrollo local), buscamos ?ref=CODIGO
         if (!rawRef) {
             const urlParams = new URLSearchParams(window.location.search);
             rawRef = urlParams.get('ref');
         }
-
-        // 3. Si no hay ref, buscamos en el path /reserva/CODIGO
         if (!rawRef) {
             const pathSegments = window.location.pathname.split('/');
             const reservaIndex = pathSegments.indexOf('reserva');
@@ -528,8 +545,6 @@
                 rawRef = pathSegments[reservaIndex + 1];
             }
         }
-
-        // 4. Fallback a localStorage o DEMO si todo falla
         rawRef = rawRef || localStorage.getItem('last_business_ref') || 'DEMO';
         const BUSINESS_CODE = rawRef.trim().toUpperCase();
         
@@ -608,7 +623,7 @@
         // --- 5. LÓGICA PRINCIPAL DE LA APP ---
         const app = {
             step: 1, total: 5,
-            data: { phone: '', name: '', surname: '', service: '', date: null, time: '' },
+            data: { phone: '', name: '', surname: '', service: '', date: null, time: '', photoUrl: null },
             checkTimer: null,
 
             async loadBusinessConfig() {
@@ -746,6 +761,7 @@
                 input.value = input.value.replace(/[^0-9]/g, '');
                 if(input.value.length < 8 ) { 
                     document.getElementById('new-user-fields').classList.remove('visible');
+                    document.getElementById('photo-section').style.display = 'none';
                     document.getElementById('actionBar').style.display = 'none';
                     return;
                 }
@@ -755,16 +771,20 @@
 
             async verifyUser(phone) {
                 document.getElementById('phoneSpinner').style.display = 'block';
-                const { data } = await supabaseClient.from('reservas').select('nombre, apellido').eq('telefono', phone).order('created_at', { ascending: false }).limit(1);
+                // Cambiado para buscar en la tabla 'clientes' que es más confiable
+                const { data } = await supabaseClient.from('clientes').select('*').eq('telefono', phone).single();
+                
                 document.getElementById('phoneSpinner').style.display = 'none';
                 localStorage.setItem(STORAGE_KEY, phone);
                 this.data.phone = phone;
 
-                if(data && data.length > 0) {
-                    const user = data[0];
-                    this.data.name = user.nombre; this.data.surname = user.apellido;
+                if(data) {
+                    // Usuario existe
+                    this.data.name = data.nombre; this.data.surname = data.apellido;
+                    this.data.photoUrl = data.foto_url;
+                    
                     chatApp.enable();
-                    document.getElementById('welcome-text').innerHTML = `Hola, espero que estés bien.<br>Bienvenida de nuevo, <b>${user.nombre} ${user.apellido}</b>`;
+                    document.getElementById('welcome-text').innerHTML = `Hola, espero que estés bien.<br>Bienvenida de nuevo, <b>${data.nombre} ${data.apellido}</b>`;
                     document.getElementById('welcome-overlay').style.display = 'flex'; 
                     document.getElementById('actionBar').style.display = 'none';
                     setTimeout(() => {
@@ -772,10 +792,40 @@
                         this.step = 2; this.updateUI();
                     }, 2500);
                 } else {
+                    // Usuario nuevo: Mostrar campos y FOTO
                     document.getElementById('new-user-fields').classList.add('visible');
+                    document.getElementById('photo-section').style.display = 'flex'; // MOSTRAR FOTO
                     document.getElementById('actionBar').style.display = 'block'; 
                     document.getElementById('inputName').focus();
                     chatApp.enable();
+                }
+            },
+
+            // --- LÓGICA SUBIDA FOTO ---
+            async procesarFoto(input) {
+                const file = input.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('preview-img').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+
+                // Subir a Supabase
+                try {
+                    const fileName = `avatars/${this.data.phone}_${Date.now()}.jpg`;
+                    const { data, error } = await supabaseClient.storage.from('glow_files').upload(fileName, file);
+                    
+                    if (error) throw error;
+                    
+                    const { data: urlData } = supabaseClient.storage.from('glow_files').getPublicUrl(fileName);
+                    this.data.photoUrl = urlData.publicUrl;
+                    console.log("Foto subida:", this.data.photoUrl);
+
+                } catch (error) {
+                    console.error("Error subiendo foto:", error);
+                    // No bloqueamos, dejamos que siga sin foto
                 }
             },
 
@@ -793,7 +843,8 @@
                 if(this.step === 1) {
                     this.data.phone = document.getElementById('inputPhone').value.trim();
                     const nameField = document.getElementById('inputName');
-                    if(nameField.offsetParent !== null) { 
+                    // Solo validar nombre si los campos de nuevo usuario son visibles
+                    if(document.getElementById('new-user-fields').classList.contains('visible')) { 
                         this.data.name = nameField.value.trim();
                         this.data.surname = document.getElementById('inputSurname').value.trim();
                         if(!this.data.name || !this.data.surname) { this.shakeBtn(); return false; }
@@ -907,6 +958,16 @@
                     const day = String(this.data.date.getDate()).padStart(2, '0');
                     const dateStr = `${year}-${month}-${day}`;
 
+                    // 1. GUARDAR/ACTUALIZAR CLIENTE (Con Foto)
+                    // Esto es CRUCIAL para que el script de Pipedream encuentre la foto
+                    await supabaseClient.from('clientes').upsert({
+                        telefono: this.data.phone,
+                        nombre: this.data.name,
+                        apellido: this.data.surname,
+                        foto_url: this.data.photoUrl
+                    });
+
+                    // 2. GUARDAR RESERVA
                     const { error } = await supabaseClient.from('reservas').insert([{
                         codigo_negocio: BUSINESS_CODE,
                         nombre: this.data.name,
@@ -1013,4 +1074,3 @@
     </script>
 </body>
 </html>
-
