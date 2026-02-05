@@ -919,72 +919,65 @@
             },
 
        subscribe() {
-    // Si ya existe una suscripción, la limpiamos para evitar duplicados
+    // 1. Limpieza previa
     if (this.realtimeChannel) {
         supabaseClient.removeChannel(this.realtimeChannel);
     }
 
-    // Usamos un nombre de canal aleatorio para forzar una conexión limpia
-    const channelId = `admin_global_${Math.random()}`; 
-    console.log("🔌 Iniciando conexión Realtime sin filtros...", channelId);
+    const channelId = `admin_room_${this.code}_${Date.now()}`;
+    console.log("🔌 Conectando Realtime para negocio:", this.code);
 
+    // 2. Crear canal con FILTRO DIRECTO (Mucho más estable)
     this.realtimeChannel = supabaseClient.channel(channelId)
-        .on('postgres_changes', { 
-            event: '*',            // Escuchar TODO (INSERT, UPDATE, DELETE)
-            schema: 'public', 
-            table: 'reservas'      // Solo tabla reservas
-            // ¡IMPORTANTE! NO PONER 'filter' AQUÍ. LO HAREMOS EN CÓDIGO.
-        }, payload => {
-            
-            // --- FILTRO DE SEGURIDAD EN CLIENTE ---
-            // Obtenemos el registro nuevo o el viejo
-            const record = payload.new || payload.old;
-            
-            // Si el registro no tiene nuestro código de negocio, LO IGNORAMOS.
-            // Nota: Convertimos a String para asegurar que coincidan tipos
-            if (!record || String(record.codigo_negocio) !== String(this.code)) return;
-
-            console.log('🔥 EVENTO RECIBIDO:', payload);
-
-            // 1. Manejo de NUEVA RESERVA (INSERT)
-            if (payload.eventType === 'INSERT') {
-                // Agregar al inicio de la lista
-                this.data.unshift(payload.new);
+        .on(
+            'postgres_changes', 
+            { 
+                event: '*', 
+                schema: 'public', 
+                table: 'reservas',
+                filter: `codigo_negocio=eq.${this.code}` // <--- LA CLAVE MÁGICA
+            }, 
+            (payload) => {
+                console.log('🔥 CAMBIO DETECTADO:', payload);
                 
-                // Mostrar Toast en pantalla
-                notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
-                
-                // Actualizar contador del dashboard
-                this.updateStatsUI();
-            } 
-            // 2. Manejo de ACTUALIZACIÓN (UPDATE)
-            else if (payload.eventType === 'UPDATE') {
-                const index = this.data.findIndex(r => r.id === payload.new.id);
-                if (index !== -1) {
-                    this.data[index] = payload.new;
-                    console.log("Registro actualizado en memoria");
+                // Manejar INSERT (Nueva reserva)
+                if (payload.eventType === 'INSERT') {
+                    this.data.unshift(payload.new);
+                    notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                } 
+                // Manejar UPDATE (Cambio de estado)
+                else if (payload.eventType === 'UPDATE') {
+                    const index = this.data.findIndex(r => r.id === payload.new.id);
+                    if (index !== -1) {
+                        this.data[index] = payload.new;
+                    }
                 }
-                this.updateStatsUI(); // Actualizar contadores por si cambió el estado
-            }
-            // 3. Manejo de ELIMINACIÓN (DELETE)
-            else if (payload.eventType === 'DELETE') {
-                this.data = this.data.filter(r => r.id !== payload.old.id);
+                // Manejar DELETE (Eliminación)
+                else if (payload.eventType === 'DELETE') {
+                    // Al usar filter server-side, a veces payload.old solo trae el ID
+                    this.data = this.data.filter(r => r.id !== payload.old.id);
+                }
+
+                // Actualizar interfaz visualmente
                 this.updateStatsUI();
+                
+                // Renderizar vista activa
+                if (document.getElementById('view-reservas').classList.contains('active')) {
+                    this.renderList();
+                }
+                if (document.getElementById('view-calendar').classList.contains('active')) {
+                    adminCalendar.render();
+                }
             }
-
-            // Refrescar la vista actual (Lista o Calendario)
-            if (document.getElementById('listView').style.display !== 'none') {
-                this.renderList();
-            }
-            if (window.adminCalendar) {
-                window.adminCalendar.render();
-            }
-
-        })
+        )
         .subscribe((status, err) => {
-            console.log(`Estado de conexión: ${status}`);
+            console.log(`📡 Estado de conexión: ${status}`);
             if (status === 'SUBSCRIBED') {
-                console.log('✅ Conectado y esperando eventos de TODAS las reservas (filtrando localmente).');
+                // Pequeño truco visual para saber que conectó
+                document.getElementById('dashCodeDisplay').style.color = 'var(--st-success-txt)';
+            }
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.error('Error Realtime:', err);
             }
         });
 },
@@ -1276,3 +1269,4 @@ updateStatsUI() {
     </script>
 </body>
 </html>
+
