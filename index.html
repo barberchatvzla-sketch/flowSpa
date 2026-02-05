@@ -1300,7 +1300,68 @@ subscribe() {
         };
 
         admin.init();
+
+        // --- NUEVO SISTEMA: ACTUALIZACIÓN VÍA PUSH (SW MESSAGING) ---
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            console.log("📨 Datos recibidos del Service Worker:", event.data);
+
+            if (event.data.action === 'UPDATE_DATOS') {
+                const tipo = event.data.tipo;       // 'reservas' o 'mensajes'
+                const nuevoRegistro = event.data.payload;
+
+                // A. SI LLEGA UNA RESERVA
+                if (tipo === 'reservas') {
+                    // Verificar si ya existe para no duplicar
+                    const existe = admin.data.some(r => r.id === nuevoRegistro.id);
+                    if (!existe) {
+                        admin.data.unshift(nuevoRegistro); // Agregar al inicio
+                        
+                        // Actualizar contadores y lista visualmente
+                        admin.updateStatsUI();
+                        if (document.getElementById('view-reservas').classList.contains('active')) {
+                            admin.renderList();
+                        }
+                        if (document.getElementById('view-calendar').classList.contains('active')) {
+                            adminCalendar.render();
+                        }
+                        notifications.show('Nueva Reserva', 'La lista se ha actualizado.', 'reserva');
+                    }
+                }
+
+                // B. SI LLEGA UN MENSAJE
+                if (tipo === 'mensajes') {
+                    // Lógica del chat
+                    const m = nuevoRegistro;
+                    
+                    // Inicializar conversación si es nuevo cliente
+                    if(!adminChat.conversations[m.telefono_cliente]) {
+                        adminChat.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
+                    }
+                    
+                    // Agregar mensaje
+                    adminChat.conversations[m.telefono_cliente].msgs.push(m);
+                    adminChat.conversations[m.telefono_cliente].last = m.contenido;
+                    
+                    // Si estamos viendo ese chat, hacer scroll y mostrar
+                    if(adminChat.activePhone === m.telefono_cliente) {
+                        adminChat.renderBubble(m);
+                        adminChat.scroll();
+                        // Marcar como leído en UI localmente si quieres
+                    } else {
+                        // Si no estamos viendo ese chat, marcar pendiente
+                        adminChat.conversations[m.telefono_cliente].unread = true;
+                        document.getElementById('msgNotify').style.display = 'block';
+                    }
+                    
+                    // Actualizar la lista lateral de chats
+                    adminChat.renderList();
+                }
+            }
+        });
+    }
     </script>
 </body>
 </html>
+
 
