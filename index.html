@@ -919,55 +919,66 @@
             },
 
         subscribe() {
-                // 1. Limpiamos canal previo para evitar duplicados
-                if (this.realtimeChannel) {
-                    supabaseClient.removeChannel(this.realtimeChannel);
+    // 1. Limpieza de canal previo
+    if (this.realtimeChannel) {
+        supabaseClient.removeChannel(this.realtimeChannel);
+    }
+
+    const channelId = `admin_room_${this.code}_v2`; // Cambiamos ID para forzar nueva conexión
+    console.log("🔌 Conectando a Realtime...", channelId);
+
+    this.realtimeChannel = supabaseClient.channel(channelId)
+        .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'reservas'
+            // ELIMINAMOS EL FILTRO 'filter' AQUÍ PARA RECIBIR TODO Y FILTRAR EN JS
+        }, payload => {
+            
+            // 2. FILTRO EN CLIENTE (Más robusto)
+            // Verificamos si el registro nuevo (o el viejo) pertenece a este negocio
+            const record = payload.new || payload.old;
+            if (!record || record.codigo_negocio !== this.code) return;
+
+            console.log('🔥 CAMBIO DETECTADO:', payload);
+
+            // Manejo de INSERT (Nueva Reserva)
+            if (payload.eventType === 'INSERT') {
+                this.data.unshift(payload.new);
+                notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                
+                // Actualizar contadores visuales inmediatamente
+                const pendingCount = this.data.filter(r => r.estado === 'pendiente').length;
+                document.getElementById('cStatPending').textContent = pendingCount;
+            } 
+            // Manejo de UPDATE (Cambio de estado)
+            else if (payload.eventType === 'UPDATE') {
+                const index = this.data.findIndex(r => r.id === payload.new.id);
+                if (index !== -1) {
+                    this.data[index] = payload.new;
+                    // Feedback visual si estamos viendo la lista
+                    notifications.show('Actualización', `Reserva actualizada.`, 'info');
                 }
+            }
+            // Manejo de DELETE
+            else if (payload.eventType === 'DELETE') {
+                this.data = this.data.filter(r => r.id !== payload.old.id);
+            }
 
-                // Creamos un ID único para el canal
-                const channelId = `admin_room_${this.code}`;
-                console.log("🔌 Conectando a Realtime:", channelId);
-
-                // 2. Suscripción CON FILTRO (Crucial para estabilidad)
-                // Escuchamos SOLO las reservas de ESTE negocio
-                this.realtimeChannel = supabaseClient.channel(channelId)
-                    .on('postgres_changes', { 
-                        event: '*', 
-                        schema: 'public', 
-                        table: 'reservas',
-                        filter: `codigo_negocio=eq.${this.code}` 
-                    }, payload => {
-                        
-                        console.log('🔥 CAMBIO EN RESERVAS:', payload);
-
-                        if (payload.eventType === 'INSERT') {
-                            this.data.unshift(payload.new);
-                            notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
-                        } 
-                        else if (payload.eventType === 'UPDATE') {
-                            const index = this.data.findIndex(r => r.id === payload.new.id);
-                            if (index !== -1) this.data[index] = payload.new;
-                        }
-                        else if (payload.eventType === 'DELETE') {
-                            this.data = this.data.filter(r => r.id !== payload.old.id);
-                        }
-
-                        // Actualizar UI inmediatamente
-                        this.renderList();
-                        adminCalendar.render();
-                    })
-                    .subscribe((status, err) => {
-                        console.log(`📡 Estado Conexión: ${status}`);
-                        
-                        if (status === 'SUBSCRIBED') {
-                            console.log('✅ LISTO: Esperando reservas en tiempo real...');
-                        }
-                        
-                        if (status === 'CHANNEL_ERROR') {
-                            console.error('❌ Error de Canal. Revisa: 1. Tabla Editor -> Enable Realtime. 2. Tu conexión a internet.', err);
-                        }
-                    });
-            },
+            // 3. Renderizar UI
+            this.renderList(); // Refresca la lista actual
+            adminCalendar.render(); // Refresca los puntos en el calendario
+        })
+        .subscribe((status, err) => {
+            console.log(`📡 Estado Realtime: ${status}`);
+            if (status === 'SUBSCRIBED') {
+                console.log('✅ Escuchando cambios...');
+            }
+            if (status === 'CHANNEL_ERROR') {
+                console.error('❌ Error de conexión Realtime:', err);
+            }
+        });
+},
             filter(status) {
                 this.renderList(status);
             },
@@ -1086,35 +1097,47 @@
                     this.renderList();
                 }
             },
-            subscribe() {
-                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
-                
-                const channelId = `admin_chat_${admin.code}`;
-                this.realtimeChannel = supabaseClient.channel(channelId)
-                    .on('postgres_changes', { 
-                        event: 'INSERT', 
-                        schema: 'public', 
-                        table: 'mensajes', 
-                        filter: `codigo_negocio=eq.${admin.code}` 
-                    }, payload => {
-                        const m = payload.new;
-                        if(!this.conversations[m.telefono_cliente]) this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
-                        this.conversations[m.telefono_cliente].msgs.push(m);
-                        this.conversations[m.telefono_cliente].last = m.contenido;
-                        
-                        if(m.emisor === 'cliente') {
-                            if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
-                            else { 
-                                this.conversations[m.telefono_cliente].unread = true; 
-                                document.getElementById('msgNotify').style.display = 'block';
-                                notifications.show('Mensaje Nuevo', `${m.telefono_cliente}`, 'mensaje');
-                            }
-                        } else if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
-                        
-                        this.renderList();
-                    })
-                    .subscribe();
-            },
+           subscribe() {
+    if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
+    
+    const channelId = `admin_chat_${admin.code}`;
+    this.realtimeChannel = supabaseClient.channel(channelId)
+        .on('postgres_changes', { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'mensajes'
+            // Sin filtro de servidor
+        }, payload => {
+            const m = payload.new;
+            
+            // FILTRO CLIENTE: Solo procesar si es para este negocio
+            if (m.codigo_negocio !== admin.code) return;
+
+            if(!this.conversations[m.telefono_cliente]) {
+                this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
+            }
+            
+            this.conversations[m.telefono_cliente].msgs.push(m);
+            this.conversations[m.telefono_cliente].last = m.contenido;
+            
+            if(m.emisor === 'cliente') {
+                if(this.activePhone === m.telefono_cliente) { 
+                    this.renderBubble(m); 
+                    this.scroll(); 
+                } else { 
+                    this.conversations[m.telefono_cliente].unread = true; 
+                    document.getElementById('msgNotify').style.display = 'block';
+                    notifications.show('Mensaje Nuevo', `${m.telefono_cliente}`, 'mensaje');
+                }
+            } else if(this.activePhone === m.telefono_cliente) { 
+                this.renderBubble(m); 
+                this.scroll(); 
+            }
+            
+            this.renderList();
+        })
+        .subscribe();
+},
             renderList() {
                 const list = document.getElementById('inboxList'); list.innerHTML = '';
                 const sortedPhones = Object.keys(this.conversations).sort((a,b) => {
@@ -1245,3 +1268,4 @@
     </script>
 </body>
 </html>
+
