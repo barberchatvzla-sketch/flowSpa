@@ -404,6 +404,22 @@
                 <div id="new-user-fields">
                     <p style="color:var(--color-fuchsia); font-size:0.9rem; margin-bottom:15px;">¡Parece que es tu primera vez. Regístrate abajo!</p>
                     <div class="input-group">
+
+                        <div id="photo-section" style="display:none; flex-direction:column; align-items:center; margin-bottom: 20px;">
+    <div style="position:relative; width: 80px; height: 80px;">
+        <img id="preview-img" src="https://via.placeholder.com/80?text=Foto" 
+             style="width:100%; height:100%; border-radius:50%; object-fit:cover; border: 2px solid var(--ios-accent);">
+        
+        <input type="file" id="file-input" accept="image/*" 
+               style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;"
+               onchange="app.procesarFoto(this)">
+        
+        <div style="position:absolute; bottom:0; right:0; background:black; color:white; border-radius:50%; padding:4px;">
+            <i class="ph ph-camera"></i>
+        </div>
+    </div>
+    <small style="color:#888; margin-top:5px;">Toca para agregar foto</small>
+</div>
                         <input type="text" id="inputName" placeholder="Tu Nombre" autocomplete="given-name">
                     </div>
                     <div class="input-group">
@@ -997,3 +1013,4 @@
     </script>
 </body>
 </html>
+
