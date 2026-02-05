@@ -919,15 +919,15 @@
             },
 
        subscribe() {
-    // 1. Limpieza previa
+    // 1. Limpiar canal anterior si existe para evitar duplicados
     if (this.realtimeChannel) {
         supabaseClient.removeChannel(this.realtimeChannel);
     }
 
+    // 2. Crear ID único para la conexión
     const channelId = `admin_room_${this.code}_${Date.now()}`;
-    console.log("🔌 Conectando Realtime para negocio:", this.code);
+    console.log("🔌 Iniciando conexión Realtime para:", this.code);
 
-    // 2. Crear canal con FILTRO DIRECTO (Mucho más estable)
     this.realtimeChannel = supabaseClient.channel(channelId)
         .on(
             'postgres_changes', 
@@ -935,33 +935,39 @@
                 event: '*', 
                 schema: 'public', 
                 table: 'reservas',
-                filter: `codigo_negocio=eq.${this.code}` // <--- LA CLAVE MÁGICA
+                filter: `codigo_negocio=eq.${this.code}` // <--- ESTO ES VITAL: Filtra desde la base de datos
             }, 
             (payload) => {
-                console.log('🔥 CAMBIO DETECTADO:', payload);
+                console.log('🔥 CAMBIO RECIBIDO:', payload);
                 
-                // Manejar INSERT (Nueva reserva)
+                // A. INSERT: Nueva reserva
                 if (payload.eventType === 'INSERT') {
-                    this.data.unshift(payload.new);
-                    notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                    // Evitar duplicados visuales si la red es lenta
+                    const existe = this.data.some(r => r.id === payload.new.id);
+                    if (!existe) {
+                        this.data.unshift(payload.new);
+                        notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                    }
                 } 
-                // Manejar UPDATE (Cambio de estado)
+                // B. UPDATE: Cambio de estado (ej: de pendiente a confirmada)
                 else if (payload.eventType === 'UPDATE') {
                     const index = this.data.findIndex(r => r.id === payload.new.id);
                     if (index !== -1) {
-                        this.data[index] = payload.new;
+                        this.data[index] = payload.new; // Actualizamos el dato en memoria
+                        // Si estamos en la vista de lista, forzamos repintado de esa tarjeta
+                        this.renderList(); 
                     }
                 }
-                // Manejar DELETE (Eliminación)
+                // C. DELETE: Reserva eliminada
                 else if (payload.eventType === 'DELETE') {
-                    // Al usar filter server-side, a veces payload.old solo trae el ID
+                    // Como usamos filtro server-side, payload.old trae el ID aunque no traiga el resto
                     this.data = this.data.filter(r => r.id !== payload.old.id);
                 }
 
-                // Actualizar interfaz visualmente
+                // Actualizar contadores y vistas
                 this.updateStatsUI();
                 
-                // Renderizar vista activa
+                // Repintar solo si la vista es visible
                 if (document.getElementById('view-reservas').classList.contains('active')) {
                     this.renderList();
                 }
@@ -971,14 +977,14 @@
             }
         )
         .subscribe((status, err) => {
-            console.log(`📡 Estado de conexión: ${status}`);
+            console.log(`📡 Estado Realtime: ${status}`);
             if (status === 'SUBSCRIBED') {
-                // Pequeño truco visual para saber que conectó
-                document.getElementById('dashCodeDisplay').style.color = 'var(--st-success-txt)';
+                // Indicador visual discreto de que está conectado
+                const titulo = document.querySelector('header h1');
+                if(titulo) titulo.style.borderBottom = '2px solid #00ff00'; // Pequeña linea verde temporal
+                setTimeout(() => { if(titulo) titulo.style.borderBottom = 'none'; }, 2000);
             }
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                console.error('Error Realtime:', err);
-            }
+            if (err) console.error('Error de conexión:', err);
         });
 },
 
@@ -1269,4 +1275,3 @@ updateStatsUI() {
     </script>
 </body>
 </html>
-
