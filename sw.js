@@ -97,41 +97,38 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// --- 4. NOTIFICACIONES PUSH ---
+// --- 4. NOTIFICACIONES PUSH & ACTUALIZACIÓN UI ---
 const GLOW_ICON_GRANDE = 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
 const GLOW_BADGE_BLANCO = 'https://i.ibb.co/sd4ygWGr/Glow-20260112-165349-0000.png';
 
 self.addEventListener('push', function(event) {
     const data = event.data ? event.data.json() : {};
-    const title = data.title || 'Glow Admin';
-    const message = data.message || 'Nueva actividad';
-
-    const options = {
-        body: message,
-        icon: GLOW_ICON_GRANDE,
-        badge: GLOW_BADGE_BLANCO,
-        vibrate: [100, 50, 100],
-        data: { url: '/index.html' },
-        tag: 'glow-notification',
-        renotify: true
-    };
-
-    event.waitUntil(self.registration.showNotification(title, options));
-});
-
-self.addEventListener('notificationclick', function(event) {
-    event.notification.close();
+    
+    // 1. PRIMERO: Intentar enviar los datos a la app abierta (UI Update)
     event.waitUntil(
-        clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
-            // Intentar enfocar una ventana abierta
-            for (let i = 0; i < clientList.length; i++) {
-                const client = clientList[i];
-                if (client.url.includes('index.html') && 'focus' in client) {
-                    return client.focus();
-                }
-            }
-            // Si no hay ventana, abrir una nueva
-            if (clients.openWindow) return clients.openWindow('/index.html');
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            // Enviamos mensaje a todas las pestañas abiertas
+            clientList.forEach(client => {
+                client.postMessage({
+                    action: 'UPDATE_DATOS', // Etiqueta para identificar el mensaje
+                    tipo: data.type,        // 'reservas' o 'mensajes'
+                    payload: data.data      // El registro nuevo
+                });
+            });
+
+            // 2. SEGUNDO: Mostrar notificación (Siempre, para asegurar que te enteras)
+            // Si quieres que NO suene cuando tienes la app abierta, avísame.
+            const title = data.title || 'Glow Admin';
+            const options = {
+                body: data.message || 'Nueva actividad',
+                icon: GLOW_ICON_GRANDE,
+                badge: GLOW_BADGE_BLANCO,
+                vibrate: [100, 50, 100],
+                data: { url: '/index.html' },
+                tag: 'glow-notification', // Evita spam visual apilado
+                renotify: true
+            };
+            return self.registration.showNotification(title, options);
         })
     );
 });
