@@ -600,7 +600,18 @@
        const SUPABASE_URL = 'https://chpzkhuvfstmmljozpjc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHpraHV2ZnN0bW1sam96cGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NjQzMzksImV4cCI6MjA4NDM0MDMzOX0.uWRs0xB68ltUVEJPICFuS9vYCmDN06KTUfgbS_4W9WU';
         
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+        persistSession: false,   // No guardar sesión (usas tu propio login)
+        autoRefreshToken: false, // No intentar refrescar el token Anon
+        detectSessionInUrl: false
+    },
+    realtime: {
+        params: {
+            eventsPerSecond: 10 // Evitar límites de velocidad
+        }
+    }
+});
 
         // DEFAULT DEMO DATA
         const DEMO_CONFIG = {
@@ -918,15 +929,15 @@
                 adminChat.init();
             },
 
-       subscribe() {
-    // 1. Limpiar canal anterior si existe para evitar duplicados
+     subscribe() {
+    // 1. Limpiar canal anterior si existe
     if (this.realtimeChannel) {
         supabaseClient.removeChannel(this.realtimeChannel);
     }
 
-    // 2. Crear ID único para la conexión
-    const channelId = `admin_room_${this.code}_${Date.now()}`;
-    console.log("🔌 Iniciando conexión Realtime para:", this.code);
+    // 2. Definir el canal
+    const channelId = `admin_reservas_${this.code}`;
+    console.log("🔌 Conectando Realtime Reservas para:", this.code);
 
     this.realtimeChannel = supabaseClient.channel(channelId)
         .on(
@@ -935,39 +946,31 @@
                 event: '*', 
                 schema: 'public', 
                 table: 'reservas',
-                filter: `codigo_negocio=eq.${this.code}` // <--- ESTO ES VITAL: Filtra desde la base de datos
+                filter: `codigo_negocio=eq.${this.code}` // Filtro directo
             }, 
             (payload) => {
-                console.log('🔥 CAMBIO RECIBIDO:', payload);
+                console.log('🔥 CAMBIO RESERVAS:', payload);
                 
-                // A. INSERT: Nueva reserva
+                // Manejo de eventos (Igual que tenías, pero limpio)
                 if (payload.eventType === 'INSERT') {
-                    // Evitar duplicados visuales si la red es lenta
                     const existe = this.data.some(r => r.id === payload.new.id);
                     if (!existe) {
                         this.data.unshift(payload.new);
                         notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
                     }
                 } 
-                // B. UPDATE: Cambio de estado (ej: de pendiente a confirmada)
                 else if (payload.eventType === 'UPDATE') {
                     const index = this.data.findIndex(r => r.id === payload.new.id);
                     if (index !== -1) {
-                        this.data[index] = payload.new; // Actualizamos el dato en memoria
-                        // Si estamos en la vista de lista, forzamos repintado de esa tarjeta
-                        this.renderList(); 
+                        this.data[index] = payload.new;
                     }
                 }
-                // C. DELETE: Reserva eliminada
                 else if (payload.eventType === 'DELETE') {
-                    // Como usamos filtro server-side, payload.old trae el ID aunque no traiga el resto
                     this.data = this.data.filter(r => r.id !== payload.old.id);
                 }
 
-                // Actualizar contadores y vistas
+                // Actualizar UI
                 this.updateStatsUI();
-                
-                // Repintar solo si la vista es visible
                 if (document.getElementById('view-reservas').classList.contains('active')) {
                     this.renderList();
                 }
@@ -977,14 +980,22 @@
             }
         )
         .subscribe((status, err) => {
-            console.log(`📡 Estado Realtime: ${status}`);
+            console.log(`📡 Estado Reservas: ${status}`);
+            
             if (status === 'SUBSCRIBED') {
-                // Indicador visual discreto de que está conectado
-                const titulo = document.querySelector('header h1');
-                if(titulo) titulo.style.borderBottom = '2px solid #00ff00'; // Pequeña linea verde temporal
-                setTimeout(() => { if(titulo) titulo.style.borderBottom = 'none'; }, 2000);
+                document.getElementById('dashTitle').style.color = 'var(--ios-text)'; // Indicador visual normal
             }
-            if (err) console.error('Error de conexión:', err);
+            
+            // AUTO-RECONEXIÓN: Si falla el token o se cierra
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                console.error('⚠️ Error Realtime, reconectando en 5s...', err);
+                document.getElementById('dashTitle').style.color = 'orange'; // Indicador visual de error
+                
+                // Intentar reconectar
+                setTimeout(() => {
+                    this.subscribe();
+                }, 5000);
+            }
         });
 },
 
@@ -1116,35 +1127,52 @@ updateStatsUI() {
                     this.renderList();
                 }
             },
-            subscribe() {
-                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
-                
-                const channelId = `admin_chat_${admin.code}`;
-                this.realtimeChannel = supabaseClient.channel(channelId)
-                    .on('postgres_changes', { 
-                        event: 'INSERT', 
-                        schema: 'public', 
-                        table: 'mensajes', 
-                        filter: `codigo_negocio=eq.${admin.code}` 
-                    }, payload => {
-                        const m = payload.new;
-                        if(!this.conversations[m.telefono_cliente]) this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
-                        this.conversations[m.telefono_cliente].msgs.push(m);
-                        this.conversations[m.telefono_cliente].last = m.contenido;
-                        
-                        if(m.emisor === 'cliente') {
-                            if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
-                            else { 
-                                this.conversations[m.telefono_cliente].unread = true; 
-                                document.getElementById('msgNotify').style.display = 'block';
-                                notifications.show('Mensaje Nuevo', `${m.telefono_cliente}`, 'mensaje');
-                            }
-                        } else if(this.activePhone === m.telefono_cliente) { this.renderBubble(m); this.scroll(); }
-                        
-                        this.renderList();
-                    })
-                    .subscribe();
-            },
+subscribe() {
+    if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
+    
+    const channelId = `admin_chat_${admin.code}`;
+    this.realtimeChannel = supabaseClient.channel(channelId)
+        .on('postgres_changes', { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'mensajes', 
+            filter: `codigo_negocio=eq.${admin.code}` 
+        }, payload => {
+            console.log("🔥 NUEVO MENSAJE:", payload);
+            const m = payload.new;
+            
+            // Lógica de UI del chat
+            if(!this.conversations[m.telefono_cliente]) {
+                this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
+            }
+            
+            this.conversations[m.telefono_cliente].msgs.push(m);
+            this.conversations[m.telefono_cliente].last = m.contenido;
+            
+            if(m.emisor === 'cliente') {
+                if(this.activePhone === m.telefono_cliente) { 
+                    this.renderBubble(m); 
+                    this.scroll(); 
+                } else { 
+                    this.conversations[m.telefono_cliente].unread = true; 
+                    document.getElementById('msgNotify').style.display = 'block';
+                    notifications.show('Mensaje Nuevo', `${m.telefono_cliente}`, 'mensaje');
+                }
+            } else if(this.activePhone === m.telefono_cliente) { 
+                this.renderBubble(m); 
+                this.scroll(); 
+            }
+            
+            this.renderList();
+        })
+        .subscribe((status) => {
+             console.log(`📡 Estado Chat: ${status}`);
+             if (status === 'CHANNEL_ERROR') {
+                 setTimeout(() => this.subscribe(), 5000); // Reconexión automática
+             }
+        });
+},
+            
             renderList() {
                 const list = document.getElementById('inboxList'); list.innerHTML = '';
                 const sortedPhones = Object.keys(this.conversations).sort((a,b) => {
@@ -1275,3 +1303,4 @@ updateStatsUI() {
     </script>
 </body>
 </html>
+
