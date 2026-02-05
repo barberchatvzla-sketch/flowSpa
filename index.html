@@ -918,56 +918,87 @@
                 adminChat.init();
             },
 
-        subscribe() {
-                // 1. Limpiamos canal previo para evitar duplicados
-                if (this.realtimeChannel) {
-                    supabaseClient.removeChannel(this.realtimeChannel);
+       subscribe() {
+    // Si ya existe una suscripción, la limpiamos para evitar duplicados
+    if (this.realtimeChannel) {
+        supabaseClient.removeChannel(this.realtimeChannel);
+    }
+
+    // Usamos un nombre de canal aleatorio para forzar una conexión limpia
+    const channelId = `admin_global_${Math.random()}`; 
+    console.log("🔌 Iniciando conexión Realtime sin filtros...", channelId);
+
+    this.realtimeChannel = supabaseClient.channel(channelId)
+        .on('postgres_changes', { 
+            event: '*',            // Escuchar TODO (INSERT, UPDATE, DELETE)
+            schema: 'public', 
+            table: 'reservas'      // Solo tabla reservas
+            // ¡IMPORTANTE! NO PONER 'filter' AQUÍ. LO HAREMOS EN CÓDIGO.
+        }, payload => {
+            
+            // --- FILTRO DE SEGURIDAD EN CLIENTE ---
+            // Obtenemos el registro nuevo o el viejo
+            const record = payload.new || payload.old;
+            
+            // Si el registro no tiene nuestro código de negocio, LO IGNORAMOS.
+            // Nota: Convertimos a String para asegurar que coincidan tipos
+            if (!record || String(record.codigo_negocio) !== String(this.code)) return;
+
+            console.log('🔥 EVENTO RECIBIDO:', payload);
+
+            // 1. Manejo de NUEVA RESERVA (INSERT)
+            if (payload.eventType === 'INSERT') {
+                // Agregar al inicio de la lista
+                this.data.unshift(payload.new);
+                
+                // Mostrar Toast en pantalla
+                notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                
+                // Actualizar contador del dashboard
+                this.updateStatsUI();
+            } 
+            // 2. Manejo de ACTUALIZACIÓN (UPDATE)
+            else if (payload.eventType === 'UPDATE') {
+                const index = this.data.findIndex(r => r.id === payload.new.id);
+                if (index !== -1) {
+                    this.data[index] = payload.new;
+                    console.log("Registro actualizado en memoria");
                 }
+                this.updateStatsUI(); // Actualizar contadores por si cambió el estado
+            }
+            // 3. Manejo de ELIMINACIÓN (DELETE)
+            else if (payload.eventType === 'DELETE') {
+                this.data = this.data.filter(r => r.id !== payload.old.id);
+                this.updateStatsUI();
+            }
 
-                // Creamos un ID único para el canal
-                const channelId = `admin_room_${this.code}`;
-                console.log("🔌 Conectando a Realtime:", channelId);
+            // Refrescar la vista actual (Lista o Calendario)
+            if (document.getElementById('listView').style.display !== 'none') {
+                this.renderList();
+            }
+            if (window.adminCalendar) {
+                window.adminCalendar.render();
+            }
 
-                // 2. Suscripción CON FILTRO (Crucial para estabilidad)
-                // Escuchamos SOLO las reservas de ESTE negocio
-                this.realtimeChannel = supabaseClient.channel(channelId)
-                    .on('postgres_changes', { 
-                        event: '*', 
-                        schema: 'public', 
-                        table: 'reservas',
-                        filter: `codigo_negocio=eq.${this.code}` 
-                    }, payload => {
-                        
-                        console.log('🔥 CAMBIO EN RESERVAS:', payload);
+        })
+        .subscribe((status, err) => {
+            console.log(`Estado de conexión: ${status}`);
+            if (status === 'SUBSCRIBED') {
+                console.log('✅ Conectado y esperando eventos de TODAS las reservas (filtrando localmente).');
+            }
+        });
+},
 
-                        if (payload.eventType === 'INSERT') {
-                            this.data.unshift(payload.new);
-                            notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
-                        } 
-                        else if (payload.eventType === 'UPDATE') {
-                            const index = this.data.findIndex(r => r.id === payload.new.id);
-                            if (index !== -1) this.data[index] = payload.new;
-                        }
-                        else if (payload.eventType === 'DELETE') {
-                            this.data = this.data.filter(r => r.id !== payload.old.id);
-                        }
-
-                        // Actualizar UI inmediatamente
-                        this.renderList();
-                        adminCalendar.render();
-                    })
-                    .subscribe((status, err) => {
-                        console.log(`📡 Estado Conexión: ${status}`);
-                        
-                        if (status === 'SUBSCRIBED') {
-                            console.log('✅ LISTO: Esperando reservas en tiempo real...');
-                        }
-                        
-                        if (status === 'CHANNEL_ERROR') {
-                            console.error('❌ Error de Canal. Revisa: 1. Tabla Editor -> Enable Realtime. 2. Tu conexión a internet.', err);
-                        }
-                    });
-            },
+// Agrega esta pequeña función auxiliar si no la tienes, para refrescar los números
+updateStatsUI() {
+    try {
+        const pending = this.data.filter(r => r.estado === 'pendiente').length;
+        const confirmed = this.data.filter(r => r.estado === 'confirmada').length;
+        
+        if(document.getElementById('cStatPending')) document.getElementById('cStatPending').innerText = pending;
+        if(document.getElementById('cStatConfirmed')) document.getElementById('cStatConfirmed').innerText = confirmed;
+    } catch(e) { console.log(e); }
+},
             filter(status) {
                 this.renderList(status);
             },
