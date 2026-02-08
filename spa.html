@@ -795,18 +795,26 @@
                 this.checkTimer = setTimeout(() => { this.verifyUser(input.value); }, 800);
             },
 
-            async verifyUser(phone) {
+           async verifyUser(phone) {
                 document.getElementById('phoneSpinner').style.display = 'block';
-                // Cambiado para buscar en la tabla 'clientes' que es más confiable
-                const { data } = await supabaseClient.from('clientes').select('*').eq('telefono', phone).single();
+                
+                // CORRECCIÓN AQUÍ: Agregamos .eq('codigo_negocio', BUSINESS_CODE)
+                // Usamos .maybeSingle() en lugar de .single() para evitar errores en consola si no existe
+                const { data } = await supabaseClient
+                    .from('clientes')
+                    .select('*')
+                    .eq('telefono', phone)
+                    .eq('codigo_negocio', BUSINESS_CODE) 
+                    .maybeSingle();
                 
                 document.getElementById('phoneSpinner').style.display = 'none';
                 localStorage.setItem(STORAGE_KEY, phone);
                 this.data.phone = phone;
 
                 if(data) {
-                    // Usuario existe
-                    this.data.name = data.nombre; this.data.surname = data.apellido;
+                    // Usuario existe EN ESTE NEGOCIO
+                    this.data.name = data.nombre; 
+                    this.data.surname = data.apellido;
                     this.data.photoUrl = data.foto_url;
                     
                     chatApp.enable();
@@ -818,15 +826,14 @@
                         this.step = 2; this.updateUI();
                     }, 2500);
                 } else {
-                    // Usuario nuevo: Mostrar campos y FOTO
+                    // Usuario nuevo (o no registrado en este negocio específico)
                     document.getElementById('new-user-fields').classList.add('visible');
-                    document.getElementById('photo-section').style.display = 'flex'; // MOSTRAR FOTO
+                    document.getElementById('photo-section').style.display = 'flex';
                     document.getElementById('actionBar').style.display = 'block'; 
                     document.getElementById('inputName').focus();
                     chatApp.enable();
                 }
             },
-
             // --- LÓGICA SUBIDA FOTO ---
             async procesarFoto(input) {
                 const file = input.files[0];
@@ -984,14 +991,15 @@
                     const day = String(this.data.date.getDate()).padStart(2, '0');
                     const dateStr = `${year}-${month}-${day}`;
 
-                    // 1. GUARDAR/ACTUALIZAR CLIENTE (Con Foto)
-                    // Esto es CRUCIAL para que el script de Pipedream encuentre la foto
+                    // 1. GUARDAR/ACTUALIZAR CLIENTE
+                    // CORRECCIÓN: Agregamos codigo_negocio al objeto
                     await supabaseClient.from('clientes').upsert({
+                        codigo_negocio: BUSINESS_CODE, // <--- IMPORTANTE: Vincula al cliente con este negocio
                         telefono: this.data.phone,
                         nombre: this.data.name,
                         apellido: this.data.surname,
                         foto_url: this.data.photoUrl
-                    });
+                    }); // Nota: Asegúrate de que tu tabla en Supabase permita duplicar teléfonos si el código de negocio es distinto, o que la llave primaria sea compuesta.
 
                     // 2. GUARDAR RESERVA
                     const { error } = await supabaseClient.from('reservas').insert([{
@@ -1100,5 +1108,6 @@
     </script>
 </body>
 </html>
+
 
 
