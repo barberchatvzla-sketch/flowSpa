@@ -601,6 +601,22 @@
                 document.body.classList.add('resources-loaded');
             }, 2500);
 
+            // Escuchar mensajes nuevos en tiempo real
+supabaseClient
+    .channel('chat_cliente')
+    .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'mensajes',
+        filter: `telefono_cliente=eq.${app.data.phone}` // Solo mensajes de este cliente
+    }, payload => {
+        // Si el mensaje es del 'admin', lo pintamos
+        if (payload.new.emisor === 'admin') {
+            chat.renderMessage(payload.new);
+        }
+    })
+    .subscribe();
+
             app.init();
         });
 
@@ -830,6 +846,20 @@
                     chatApp.enable();
                 }
             },
+
+            async loadChatHistory() {
+    const { data, error } = await supabaseClient
+        .from('mensajes')
+        .select('*')
+        .eq('telefono_cliente', app.data.phone)
+        .order('created_at', { ascending: true });
+
+    if (data) {
+        document.getElementById('chatContainer').innerHTML = ''; // Limpiar
+        data.forEach(m => chat.renderMessage(m));
+        chat.scrollToBottom();
+    }
+}
             
             async procesarFoto(input) {
                 const file = input.files[0];
@@ -1070,23 +1100,36 @@
                 this.scrollToBottom();
             },
 
-            async send() {
-                const input = document.getElementById('chatInput');
-                const txt = input.value.trim();
-                if(!txt) return;
+           async send() {
+    const input = document.getElementById('chatInput');
+    const txt = input.value.trim();
+    if(!txt) return;
 
-                const phone = app.data.phone;
-                if(!phone) return alert("Completa el registro primero.");
+    const phone = app.data.phone;
+    if(!phone) return alert("Completa el registro primero.");
 
-                input.value = '';
-                await supabaseClient.from('mensajes').insert([{
-                    codigo_negocio: BUSINESS_CODE,
-                    telefono_cliente: phone,
-                    emisor: 'cliente',
-                    contenido: txt,
-                    leido: false
-                }]);
-            },
+    // Guardamos el texto y limpiamos el input inmediatamente para mejor UX
+    input.value = '';
+
+    const nuevoMensaje = {
+        codigo_negocio: BUSINESS_CODE,
+        telefono_cliente: phone,
+        emisor: 'cliente',
+        contenido: txt,
+        leido: false
+    };
+
+    // 1. Insertar en Supabase
+    const { error } = await supabaseClient.from('mensajes').insert([nuevoMensaje]);
+    
+    if(error) {
+        console.error("Error enviando:", error);
+    } else {
+        // 2. Pintarlo localmente de inmediato para que el cliente vea que se envió
+        this.renderMessage(nuevoMensaje);
+        this.scrollToBottom();
+    }
+},
 
             scrollToBottom() {
                 const c = document.getElementById('chatContainer');
@@ -1104,3 +1147,4 @@
     </script>
 </body>
 </html>
+
