@@ -157,21 +157,19 @@
             position: relative; 
             z-index: 2; 
             margin-bottom: 60px; 
-            padding: 0 20px; /* Reducido de 40px para dar más espacio a los lados */
+            padding: 0 20px; 
             text-align: center; 
             color: white; 
-            width: 100%; /* Asegura el ancho completo para centrar bien */
+            width: 100%; 
         }
         .brand-large { 
             font-family: var(--font-serif); 
-            /* AQUÍ ESTÁ LA MAGIA: */
-            /* clamp(mínimo, ideal, máximo) ajusta el texto al ancho de la pantalla */
             font-size: clamp(2.5rem, 13vw, 4.5rem); 
-            font-weight: 700; /* Más negrita como en tu imagen */
+            font-weight: 700; 
             margin-bottom: 15px; 
-            line-height: 0.95; /* Líneas más juntas para que se vea compacto */
-            text-transform: uppercase; /* Fuerza mayúsculas */
-            word-wrap: break-word; /* Evita que se salga de la pantalla */
+            line-height: 0.95; 
+            text-transform: uppercase; 
+            word-wrap: break-word; 
             overflow-wrap: break-word;
         }
         .brand-large span { color: var(--color-fuchsia); }
@@ -197,22 +195,17 @@
         }
         .brand-small { 
             font-family: var(--font-serif); 
-            /* Ajustamos la fuente para que se adapte mejor */
             font-size: clamp(1rem, 3.5vw, 1.4rem);
             font-weight: 700; 
-            
-            /* CORRECCIONES CLAVE: */
-            flex: 1; /* Hace que ocupe todo el espacio disponible entre los botones */
-            max-width: none; /* Eliminamos el límite de ancho que cortaba el texto */
-            white-space: normal; /* Permite que el texto baje a otra línea si es necesario */
-            overflow: visible; /* Muestra todo el contenido */
-            text-overflow: clip; /* Quita los puntos suspensivos (...) */
-            
+            flex: 1; 
+            max-width: none; 
+            white-space: normal; 
+            overflow: visible; 
+            text-overflow: clip; 
             text-align: center;
             margin: 0 auto;
-            line-height: 1.1; /* Espaciado cómodo por si ocupa dos líneas */
-            padding: 0 10px; /* Un pequeño margen para no pegarse a los botones laterales */
-        }
+            line-height: 1.1; 
+            padding: 0 10px; 
         }
         @media (max-width: 380px) {
             .brand-small { max-width: 150px; font-size: 1.1rem; }
@@ -798,13 +791,12 @@
            async verifyUser(phone) {
                 document.getElementById('phoneSpinner').style.display = 'block';
                 
-                // CORRECCIÓN AQUÍ: Agregamos .eq('codigo_negocio', BUSINESS_CODE)
-                // Usamos .maybeSingle() en lugar de .single() para evitar errores en consola si no existe
+                // CORRECCIÓN APLICADA: Búsqueda global por teléfono
                 const { data } = await supabaseClient
                     .from('clientes')
                     .select('*')
                     .eq('telefono', phone)
-                    .eq('codigo_negocio', BUSINESS_CODE) 
+                    // .eq('codigo_negocio', BUSINESS_CODE) <--- ELIMINADO para encontrar al usuario globalmente
                     .maybeSingle();
                 
                 document.getElementById('phoneSpinner').style.display = 'none';
@@ -812,7 +804,7 @@
                 this.data.phone = phone;
 
                 if(data) {
-                    // Usuario existe EN ESTE NEGOCIO
+                    // Usuario existe
                     this.data.name = data.nombre; 
                     this.data.surname = data.apellido;
                     this.data.photoUrl = data.foto_url;
@@ -826,7 +818,7 @@
                         this.step = 2; this.updateUI();
                     }, 2500);
                 } else {
-                    // Usuario nuevo (o no registrado en este negocio específico)
+                    // Usuario nuevo
                     document.getElementById('new-user-fields').classList.add('visible');
                     document.getElementById('photo-section').style.display = 'flex';
                     document.getElementById('actionBar').style.display = 'block'; 
@@ -992,14 +984,13 @@
                     const dateStr = `${year}-${month}-${day}`;
 
                     // 1. GUARDAR/ACTUALIZAR CLIENTE
-                    // CORRECCIÓN: Agregamos codigo_negocio al objeto
                     await supabaseClient.from('clientes').upsert({
-                        codigo_negocio: BUSINESS_CODE, // <--- IMPORTANTE: Vincula al cliente con este negocio
+                        codigo_negocio: BUSINESS_CODE, 
                         telefono: this.data.phone,
                         nombre: this.data.name,
                         apellido: this.data.surname,
                         foto_url: this.data.photoUrl
-                    }); // Nota: Asegúrate de que tu tabla en Supabase permita duplicar teléfonos si el código de negocio es distinto, o que la llave primaria sea compuesta.
+                    }, { onConflict: 'telefono' }); // IMPORTANTE: Asegura que si existe el teléfono, actualice, no duplique.
 
                     // 2. GUARDAR RESERVA
                     const { error } = await supabaseClient.from('reservas').insert([{
@@ -1108,6 +1099,3 @@
     </script>
 </body>
 </html>
-
-
-
