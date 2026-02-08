@@ -4,7 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <title>Reserva tu Cita</title> <meta property="og:type" content="website">
+    <title>__OG_TITLE__</title>
+    <meta name="description" content="__OG_DESCRIPTION__">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="__OG_URL__">
+    <meta property="og:title" content="__OG_TITLE__">
+    <meta property="og:description" content="__OG_DESCRIPTION__">
+    <meta property="og:image" content="__OG_IMAGE__">
+    
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="__OG_URL__">
+    <meta property="twitter:title" content="__OG_TITLE__">
+    <meta property="twitter:description" content="__OG_DESCRIPTION__">
+    <meta property="twitter:image" content="__OG_IMAGE__">
+
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -143,52 +157,36 @@
             position: relative; 
             z-index: 2; 
             margin-bottom: 60px; 
-            padding: 0 20px; 
+            padding: 0 20px; /* Reducido de 40px para dar más espacio a los lados */
             text-align: center; 
             color: white; 
-            width: 100%; 
+            width: 100%; /* Asegura el ancho completo para centrar bien */
         }
         .brand-large { 
             font-family: var(--font-serif); 
+            /* AQUÍ ESTÁ LA MAGIA: */
+            /* clamp(mínimo, ideal, máximo) ajusta el texto al ancho de la pantalla */
             font-size: clamp(2.5rem, 13vw, 4.5rem); 
-            font-weight: 700; 
+            font-weight: 700; /* Más negrita como en tu imagen */
             margin-bottom: 15px; 
-            line-height: 0.95; 
-            text-transform: uppercase; 
-            word-wrap: break-word; 
+            line-height: 0.95; /* Líneas más juntas para que se vea compacto */
+            text-transform: uppercase; /* Fuerza mayúsculas */
+            word-wrap: break-word; /* Evita que se salga de la pantalla */
             overflow-wrap: break-word;
         }
         .brand-large span { color: var(--color-fuchsia); }
         .cover-subtitle { font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 50px; opacity: 0.9; }
 
-        /* --- APP FRAME (CORREGIDO PARA MÓVIL) --- */
+        /* --- APP FRAME --- */
         #app-frame {
-            width: 100%; 
-            max-width: 100%; /* CORRECCIÓN: Ocupa todo el ancho en móvil por defecto */
-            height: 100%; 
-            max-height: 100dvh; 
-            background: var(--color-white); 
-            position: relative; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; 
-            opacity: 0; 
-            transform: scale(0.94);
-            border-radius: 0; /* Sin bordes redondeados en móvil */
+            width: 100%; max-width: 414px; height: 100%; max-height: 100dvh; 
+            background: var(--color-white); position: relative; display: flex; flex-direction: column; 
+            overflow: hidden; opacity: 0; transform: scale(0.94);
             transition: opacity 0.8s 0.2s, transform 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        
         body.app-active #app-frame { opacity: 1; transform: scale(1); }
-
-        /* Solo aplicamos el estilo "celular flotante" en pantallas grandes (>768px) */
-        @media (min-width: 768px) {
-            #app-frame { 
-                max-width: 414px; /* Ancho de iPhone para escritorio */
-                height: 92vh; 
-                max-height: 896px; 
-                border-radius: var(--radius-app); 
-                box-shadow: var(--shadow-soft); 
-            }
+        @media (min-width: 450px) {
+            #app-frame { height: 92vh; max-height: 896px; border-radius: var(--radius-app); box-shadow: var(--shadow-soft); }
             body { background-image: linear-gradient(135deg, #111 0%, #333 100%); }
         }
 
@@ -199,17 +197,22 @@
         }
         .brand-small { 
             font-family: var(--font-serif); 
+            /* Ajustamos la fuente para que se adapte mejor */
             font-size: clamp(1rem, 3.5vw, 1.4rem);
             font-weight: 700; 
-            flex: 1; 
-            max-width: none; 
-            white-space: normal; 
-            overflow: visible; 
-            text-overflow: clip; 
+            
+            /* CORRECCIONES CLAVE: */
+            flex: 1; /* Hace que ocupe todo el espacio disponible entre los botones */
+            max-width: none; /* Eliminamos el límite de ancho que cortaba el texto */
+            white-space: normal; /* Permite que el texto baje a otra línea si es necesario */
+            overflow: visible; /* Muestra todo el contenido */
+            text-overflow: clip; /* Quita los puntos suspensivos (...) */
+            
             text-align: center;
             margin: 0 auto;
-            line-height: 1.1; 
-            padding: 0 10px; 
+            line-height: 1.1; /* Espaciado cómodo por si ocupa dos líneas */
+            padding: 0 10px; /* Un pequeño margen para no pegarse a los botones laterales */
+        }
         }
         @media (max-width: 380px) {
             .brand-small { max-width: 150px; font-size: 1.1rem; }
@@ -601,22 +604,6 @@
                 document.body.classList.add('resources-loaded');
             }, 2500);
 
-            // Escuchar mensajes nuevos en tiempo real
-supabaseClient
-    .channel('chat_cliente')
-    .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'mensajes',
-        filter: `telefono_cliente=eq.${app.data.phone}` // Solo mensajes de este cliente
-    }, payload => {
-        // Si el mensaje es del 'admin', lo pintamos
-        if (payload.new.emisor === 'admin') {
-            chat.renderMessage(payload.new);
-        }
-    })
-    .subscribe();
-
             app.init();
         });
 
@@ -811,7 +798,8 @@ supabaseClient
            async verifyUser(phone) {
                 document.getElementById('phoneSpinner').style.display = 'block';
                 
-                // NOTA IMPORTANTE: Ahora el filtro 'codigo_negocio' funcionará porque hemos arreglado la BD
+                // CORRECCIÓN AQUÍ: Agregamos .eq('codigo_negocio', BUSINESS_CODE)
+                // Usamos .maybeSingle() en lugar de .single() para evitar errores en consola si no existe
                 const { data } = await supabaseClient
                     .from('clientes')
                     .select('*')
@@ -824,7 +812,7 @@ supabaseClient
                 this.data.phone = phone;
 
                 if(data) {
-                    // Usuario existe
+                    // Usuario existe EN ESTE NEGOCIO
                     this.data.name = data.nombre; 
                     this.data.surname = data.apellido;
                     this.data.photoUrl = data.foto_url;
@@ -838,7 +826,7 @@ supabaseClient
                         this.step = 2; this.updateUI();
                     }, 2500);
                 } else {
-                    // Usuario nuevo
+                    // Usuario nuevo (o no registrado en este negocio específico)
                     document.getElementById('new-user-fields').classList.add('visible');
                     document.getElementById('photo-section').style.display = 'flex';
                     document.getElementById('actionBar').style.display = 'block'; 
@@ -846,21 +834,7 @@ supabaseClient
                     chatApp.enable();
                 }
             },
-
-            async loadChatHistory() {
-    const { data, error } = await supabaseClient
-        .from('mensajes')
-        .select('*')
-        .eq('telefono_cliente', app.data.phone)
-        .order('created_at', { ascending: true });
-
-    if (data) {
-        document.getElementById('chatContainer').innerHTML = ''; // Limpiar
-        data.forEach(m => chat.renderMessage(m));
-        chat.scrollToBottom();
-    }
-}
-            
+            // --- LÓGICA SUBIDA FOTO ---
             async procesarFoto(input) {
                 const file = input.files[0];
                 if (!file) return;
@@ -871,6 +845,7 @@ supabaseClient
                 };
                 reader.readAsDataURL(file);
 
+                // Subir a Supabase
                 try {
                     const fileName = `avatars/${this.data.phone}_${Date.now()}.jpg`;
                     const { data, error } = await supabaseClient.storage.from('glow_files').upload(fileName, file);
@@ -883,6 +858,7 @@ supabaseClient
 
                 } catch (error) {
                     console.error("Error subiendo foto:", error);
+                    // No bloqueamos, dejamos que siga sin foto
                 }
             },
 
@@ -900,6 +876,7 @@ supabaseClient
                 if(this.step === 1) {
                     this.data.phone = document.getElementById('inputPhone').value.trim();
                     const nameField = document.getElementById('inputName');
+                    // Solo validar nombre si los campos de nuevo usuario son visibles
                     if(document.getElementById('new-user-fields').classList.contains('visible')) { 
                         this.data.name = nameField.value.trim();
                         this.data.surname = document.getElementById('inputSurname').value.trim();
@@ -1014,20 +991,18 @@ supabaseClient
                     const day = String(this.data.date.getDate()).padStart(2, '0');
                     const dateStr = `${year}-${month}-${day}`;
 
-                    // 1. GUARDAR/ACTUALIZAR CLIENTE CON CÓDIGO DE NEGOCIO
-                    // IMPORTANTE: Ahora incluimos codigo_negocio para que coincida con la nueva Primary Key
-                    const { error: clientError } = await supabaseClient.from('clientes').upsert({
-                        codigo_negocio: BUSINESS_CODE,
+                    // 1. GUARDAR/ACTUALIZAR CLIENTE
+                    // CORRECCIÓN: Agregamos codigo_negocio al objeto
+                    await supabaseClient.from('clientes').upsert({
+                        codigo_negocio: BUSINESS_CODE, // <--- IMPORTANTE: Vincula al cliente con este negocio
                         telefono: this.data.phone,
                         nombre: this.data.name,
                         apellido: this.data.surname,
                         foto_url: this.data.photoUrl
-                    }); 
-
-                    if(clientError) throw clientError;
+                    }); // Nota: Asegúrate de que tu tabla en Supabase permita duplicar teléfonos si el código de negocio es distinto, o que la llave primaria sea compuesta.
 
                     // 2. GUARDAR RESERVA
-                    const { error: bookingError } = await supabaseClient.from('reservas').insert([{
+                    const { error } = await supabaseClient.from('reservas').insert([{
                         codigo_negocio: BUSINESS_CODE,
                         nombre: this.data.name,
                         apellido: this.data.surname,
@@ -1038,8 +1013,7 @@ supabaseClient
                         estado: 'pendiente'
                     }]);
 
-                    if(bookingError) throw bookingError;
-                    
+                    if(error) throw error;
                     document.getElementById('successModal').classList.add('active');
 
                 } catch (error) {
@@ -1100,36 +1074,23 @@ supabaseClient
                 this.scrollToBottom();
             },
 
-           async send() {
-    const input = document.getElementById('chatInput');
-    const txt = input.value.trim();
-    if(!txt) return;
+            async send() {
+                const input = document.getElementById('chatInput');
+                const txt = input.value.trim();
+                if(!txt) return;
 
-    const phone = app.data.phone;
-    if(!phone) return alert("Completa el registro primero.");
+                const phone = app.data.phone;
+                if(!phone) return alert("Completa el registro primero.");
 
-    // Guardamos el texto y limpiamos el input inmediatamente para mejor UX
-    input.value = '';
-
-    const nuevoMensaje = {
-        codigo_negocio: BUSINESS_CODE,
-        telefono_cliente: phone,
-        emisor: 'cliente',
-        contenido: txt,
-        leido: false
-    };
-
-    // 1. Insertar en Supabase
-    const { error } = await supabaseClient.from('mensajes').insert([nuevoMensaje]);
-    
-    if(error) {
-        console.error("Error enviando:", error);
-    } else {
-        // 2. Pintarlo localmente de inmediato para que el cliente vea que se envió
-        this.renderMessage(nuevoMensaje);
-        this.scrollToBottom();
-    }
-},
+                input.value = '';
+                await supabaseClient.from('mensajes').insert([{
+                    codigo_negocio: BUSINESS_CODE,
+                    telefono_cliente: phone,
+                    emisor: 'cliente',
+                    contenido: txt,
+                    leido: false
+                }]);
+            },
 
             scrollToBottom() {
                 const c = document.getElementById('chatContainer');
@@ -1147,4 +1108,6 @@ supabaseClient
     </script>
 </body>
 </html>
+
+
 
