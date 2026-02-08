@@ -153,8 +153,27 @@
             position: absolute; bottom: 0; left: 0; width: 100%; height: 70%;
             background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%); z-index: 1;
         }
-        .cover-content { position: relative; z-index: 2; margin-bottom: 60px; padding: 0 40px; text-align: center; color: white; }
-        .brand-large { font-family: var(--font-serif); font-size: 4rem; margin-bottom: 10px; line-height: 1.1; }
+        .cover-content { 
+            position: relative; 
+            z-index: 2; 
+            margin-bottom: 60px; 
+            padding: 0 20px; /* Reducido de 40px para dar más espacio a los lados */
+            text-align: center; 
+            color: white; 
+            width: 100%; /* Asegura el ancho completo para centrar bien */
+        }
+        .brand-large { 
+            font-family: var(--font-serif); 
+            /* AQUÍ ESTÁ LA MAGIA: */
+            /* clamp(mínimo, ideal, máximo) ajusta el texto al ancho de la pantalla */
+            font-size: clamp(2.5rem, 13vw, 4.5rem); 
+            font-weight: 700; /* Más negrita como en tu imagen */
+            margin-bottom: 15px; 
+            line-height: 0.95; /* Líneas más juntas para que se vea compacto */
+            text-transform: uppercase; /* Fuerza mayúsculas */
+            word-wrap: break-word; /* Evita que se salga de la pantalla */
+            overflow-wrap: break-word;
+        }
         .brand-large span { color: var(--color-fuchsia); }
         .cover-subtitle { font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 50px; opacity: 0.9; }
 
@@ -1074,3 +1093,4 @@
     </script>
 </body>
 </html>
+
