@@ -810,6 +810,7 @@
                 document.getElementById('phoneSpinner').style.display = 'none';
                 localStorage.setItem(STORAGE_KEY, phone);
                 this.data.phone = phone;
+               chatApp.startChat(phone);
 
                 if(data) {
                     // Usuario existe EN ESTE NEGOCIO
@@ -1024,79 +1025,153 @@
             }
         };
 
-        const chatApp = {
-            isOpen: false,
-            init() {
-                // Initial fetch messages if user is logged in
-                const phone = app.data.phone;
-                if(phone) this.subscribe(phone);
-            },
-            enable() { document.getElementById('headerChatBtn').classList.remove('hidden'); },
-            toggle() {
-                this.isOpen = !this.isOpen;
-                document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
-                if(this.isOpen) {
-                    document.getElementById('chatBadge').classList.remove('active');
-                    this.scrollToBottom();
+       /* --- REEMPLAZA TODO EL BLOQUE chatApp CON ESTO --- */
+const chatApp = {
+    isOpen: false,
+    activePhone: null,
+    
+    init() {
+        // Intentar cargar si ya hay teléfono en memoria al abrir la app
+        if(app.data.phone) {
+            this.startChat(app.data.phone);
+        }
+    },
+
+    // Nueva función para iniciar todo correctamente
+    startChat(phone) {
+        this.activePhone = phone;
+        this.loadHistory(); // Cargar mensajes viejos
+        this.subscribe();   // Escuchar mensajes nuevos
+        document.getElementById('headerChatBtn').classList.remove('hidden');
+    },
+
+    enable() { 
+        document.getElementById('headerChatBtn').classList.remove('hidden'); 
+    },
+
+    toggle() {
+        this.isOpen = !this.isOpen;
+        document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
+        if(this.isOpen) {
+            document.getElementById('chatBadge').classList.remove('active');
+            this.scrollToBottom();
+            // Aseguramos recarga por si acaso
+            if(this.activePhone) this.loadHistory(); 
+        }
+    },
+
+    handleEnter(e) { if(e.key === 'Enter') this.send(); },
+
+    // 1. CARGAR HISTORIAL (La parte que faltaba visualizar bien)
+    async loadHistory() {
+        if(!this.activePhone || !BUSINESS_CODE) return;
+
+        const { data, error } = await supabaseClient
+            .from('mensajes')
+            .select('*')
+            .eq('codigo_negocio', BUSINESS_CODE)
+            .eq('telefono_cliente', this.activePhone)
+            .order('created_at', { ascending: true }); // Ordenar del más viejo al más nuevo
+
+        const container = document.getElementById('chatContainer');
+        container.innerHTML = ''; // Limpiar chat previo
+        
+        if (error) console.error("Error cargando chat:", error);
+
+        if(data && data.length > 0) {
+            data.forEach(m => this.renderMessage(m));
+            this.scrollToBottom();
+        } else {
+            container.innerHTML = '<div style="text-align:center; color:#ccc; margin-top:20px; font-size:0.9rem;">No hay mensajes aún.<br>¡Escríbenos!</div>';
+        }
+    },
+
+    // 2. ESCUCHAR NUEVOS MENSAJES (Realtime para recibir respuesta del Admin)
+    subscribe() {
+        if(!this.activePhone) return;
+
+        // Limpiar suscripciones previas para no duplicar
+        supabaseClient.removeAllChannels();
+
+        supabaseClient.channel('chat_cliente_room')
+            .on('postgres_changes', { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'mensajes', 
+                filter: `telefono_cliente=eq.${this.activePhone}` // Solo mensajes de este cliente
+            }, 
+            payload => {
+                // Verificar que sea de este negocio
+                if(payload.new.codigo_negocio === BUSINESS_CODE) {
+                    // Si el mensaje es "No hay mensajes aún", lo quitamos
+                    const container = document.getElementById('chatContainer');
+                    if(container.innerText.includes('No hay mensajes')) container.innerHTML = '';
+
+                    this.renderMessage(payload.new);
+                    
+                    // Si el chat está cerrado y escribe el Admin, mostrar puntito rojo
+                    if(!this.isOpen && payload.new.emisor === 'admin') {
+                        document.getElementById('chatBadge').classList.add('active');
+                        // Opcional: Sonido de notificación
+                    }
                 }
-            },
-            handleEnter(e) { if(e.key === 'Enter') this.send(); },
-            
-            subscribe(phone) {
-                this.loadMessages(phone);
-                supabaseClient.channel('chat_client')
-                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes', filter: `telefono_cliente=eq.${phone}` }, 
-                    payload => {
-                        this.renderMessage(payload.new);
-                        if(!this.isOpen && payload.new.emisor === 'admin') {
-                            document.getElementById('chatBadge').classList.add('active');
-                        }
-                    })
-                    .subscribe();
-            },
+            })
+            .subscribe((status) => {
+                console.log("Estado Chat Realtime:", status);
+            });
+    },
 
-            async loadMessages(phone) {
-                const { data } = await supabaseClient.from('mensajes').select('*')
-                    .eq('codigo_negocio', BUSINESS_CODE)
-                    .eq('telefono_cliente', phone)
-                    .order('created_at', { ascending: true });
-                
-                const container = document.getElementById('chatContainer');
-                container.innerHTML = '';
-                if(data) data.forEach(m => this.renderMessage(m));
-            },
+    renderMessage(msg) {
+        const container = document.getElementById('chatContainer');
+        const div = document.createElement('div');
+        // 'me' es el cliente, 'admin' es el negocio
+        div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
+        div.textContent = msg.contenido;
+        
+        // Agregar hora pequeña (opcional)
+        const time = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const timeSpan = document.createElement('span');
+        timeSpan.style.fontSize = '0.65rem';
+        timeSpan.style.opacity = '0.7';
+        timeSpan.style.display = 'block';
+        timeSpan.style.textAlign = 'right';
+        timeSpan.style.marginTop = '4px';
+        timeSpan.innerText = time;
+        div.appendChild(timeSpan);
 
-            renderMessage(msg) {
-                const div = document.createElement('div');
-                div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
-                div.textContent = msg.contenido;
-                document.getElementById('chatContainer').appendChild(div);
-                this.scrollToBottom();
-            },
+        container.appendChild(div);
+        this.scrollToBottom();
+    },
 
-            async send() {
-                const input = document.getElementById('chatInput');
-                const txt = input.value.trim();
-                if(!txt) return;
+    async send() {
+        const input = document.getElementById('chatInput');
+        const txt = input.value.trim();
+        if(!txt) return;
 
-                const phone = app.data.phone;
-                if(!phone) return alert("Completa el registro primero.");
+        if(!this.activePhone) return alert("Completa el registro primero.");
 
-                input.value = '';
-                await supabaseClient.from('mensajes').insert([{
-                    codigo_negocio: BUSINESS_CODE,
-                    telefono_cliente: phone,
-                    emisor: 'cliente',
-                    contenido: txt,
-                    leido: false
-                }]);
-            },
+        // Limpiar input visualmente inmediato
+        input.value = '';
 
-            scrollToBottom() {
-                const c = document.getElementById('chatContainer');
-                setTimeout(() => c.scrollTop = c.scrollHeight, 100);
-            }
-        };
+        // Enviar a Supabase
+        const { error } = await supabaseClient.from('mensajes').insert([{
+            codigo_negocio: BUSINESS_CODE,
+            telefono_cliente: this.activePhone,
+            emisor: 'cliente',
+            contenido: txt,
+            leido: false
+        }]);
+
+        if(error) alert("Error al enviar: " + error.message);
+        // No necesitamos renderizarlo aquí manualmente porque el Realtime (subscribe)
+        // lo detectará y lo pintará automáticamente.
+    },
+
+    scrollToBottom() {
+        const c = document.getElementById('chatContainer');
+        setTimeout(() => c.scrollTop = c.scrollHeight, 100);
+    }
+};
         
         // Estilos para la animación de sacudida
         const styleSheet = document.createElement("style");
@@ -1108,6 +1183,7 @@
     </script>
 </body>
 </html>
+
 
 
 
