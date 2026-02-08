@@ -197,15 +197,22 @@
         }
         .brand-small { 
             font-family: var(--font-serif); 
-            font-size: clamp(1.2rem, 4vw, 1.4rem);
+            /* Ajustamos la fuente para que se adapte mejor */
+            font-size: clamp(1rem, 3.5vw, 1.4rem);
             font-weight: 700; 
-            max-width: 180px; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis;
+            
+            /* CORRECCIONES CLAVE: */
+            flex: 1; /* Hace que ocupe todo el espacio disponible entre los botones */
+            max-width: none; /* Eliminamos el límite de ancho que cortaba el texto */
+            white-space: normal; /* Permite que el texto baje a otra línea si es necesario */
+            overflow: visible; /* Muestra todo el contenido */
+            text-overflow: clip; /* Quita los puntos suspensivos (...) */
+            
             text-align: center;
             margin: 0 auto;
-            transition: all 0.3s ease;
+            line-height: 1.1; /* Espaciado cómodo por si ocupa dos líneas */
+            padding: 0 10px; /* Un pequeño margen para no pegarse a los botones laterales */
+        }
         }
         @media (max-width: 380px) {
             .brand-small { max-width: 150px; font-size: 1.1rem; }
@@ -1093,4 +1100,5 @@
     </script>
 </body>
 </html>
+
 
