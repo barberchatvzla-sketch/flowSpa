@@ -1,24 +1,14 @@
+{
+type: uploaded file
+fileName: spa.html
+fullContent:
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <title>__OG_TITLE__</title>
-    <meta name="description" content="__OG_DESCRIPTION__">
-
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="__OG_URL__">
-    <meta property="og:title" content="__OG_TITLE__">
-    <meta property="og:description" content="__OG_DESCRIPTION__">
-    <meta property="og:image" content="__OG_IMAGE__">
-    
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="__OG_URL__">
-    <meta property="twitter:title" content="__OG_TITLE__">
-    <meta property="twitter:description" content="__OG_DESCRIPTION__">
-    <meta property="twitter:image" content="__OG_IMAGE__">
-
+    <title>Reserva tu Cita</title> <meta property="og:type" content="website">
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -791,12 +781,12 @@
            async verifyUser(phone) {
                 document.getElementById('phoneSpinner').style.display = 'block';
                 
-                // CORRECCIÓN APLICADA: Búsqueda global por teléfono
+                // NOTA IMPORTANTE: Ahora el filtro 'codigo_negocio' funcionará porque hemos arreglado la BD
                 const { data } = await supabaseClient
                     .from('clientes')
                     .select('*')
                     .eq('telefono', phone)
-                    // .eq('codigo_negocio', BUSINESS_CODE) <--- ELIMINADO para encontrar al usuario globalmente
+                    .eq('codigo_negocio', BUSINESS_CODE) 
                     .maybeSingle();
                 
                 document.getElementById('phoneSpinner').style.display = 'none';
@@ -826,7 +816,7 @@
                     chatApp.enable();
                 }
             },
-            // --- LÓGICA SUBIDA FOTO ---
+            
             async procesarFoto(input) {
                 const file = input.files[0];
                 if (!file) return;
@@ -837,7 +827,6 @@
                 };
                 reader.readAsDataURL(file);
 
-                // Subir a Supabase
                 try {
                     const fileName = `avatars/${this.data.phone}_${Date.now()}.jpg`;
                     const { data, error } = await supabaseClient.storage.from('glow_files').upload(fileName, file);
@@ -850,7 +839,6 @@
 
                 } catch (error) {
                     console.error("Error subiendo foto:", error);
-                    // No bloqueamos, dejamos que siga sin foto
                 }
             },
 
@@ -868,7 +856,6 @@
                 if(this.step === 1) {
                     this.data.phone = document.getElementById('inputPhone').value.trim();
                     const nameField = document.getElementById('inputName');
-                    // Solo validar nombre si los campos de nuevo usuario son visibles
                     if(document.getElementById('new-user-fields').classList.contains('visible')) { 
                         this.data.name = nameField.value.trim();
                         this.data.surname = document.getElementById('inputSurname').value.trim();
@@ -983,17 +970,20 @@
                     const day = String(this.data.date.getDate()).padStart(2, '0');
                     const dateStr = `${year}-${month}-${day}`;
 
-                    // 1. GUARDAR/ACTUALIZAR CLIENTE
-                    await supabaseClient.from('clientes').upsert({
-                        codigo_negocio: BUSINESS_CODE, 
+                    // 1. GUARDAR/ACTUALIZAR CLIENTE CON CÓDIGO DE NEGOCIO
+                    // IMPORTANTE: Ahora incluimos codigo_negocio para que coincida con la nueva Primary Key
+                    const { error: clientError } = await supabaseClient.from('clientes').upsert({
+                        codigo_negocio: BUSINESS_CODE,
                         telefono: this.data.phone,
                         nombre: this.data.name,
                         apellido: this.data.surname,
                         foto_url: this.data.photoUrl
-                    }, { onConflict: 'telefono' }); // IMPORTANTE: Asegura que si existe el teléfono, actualice, no duplique.
+                    }); 
+
+                    if(clientError) throw clientError;
 
                     // 2. GUARDAR RESERVA
-                    const { error } = await supabaseClient.from('reservas').insert([{
+                    const { error: bookingError } = await supabaseClient.from('reservas').insert([{
                         codigo_negocio: BUSINESS_CODE,
                         nombre: this.data.name,
                         apellido: this.data.surname,
@@ -1004,7 +994,8 @@
                         estado: 'pendiente'
                     }]);
 
-                    if(error) throw error;
+                    if(bookingError) throw bookingError;
+                    
                     document.getElementById('successModal').classList.add('active');
 
                 } catch (error) {
@@ -1099,3 +1090,4 @@
     </script>
 </body>
 </html>
+}
