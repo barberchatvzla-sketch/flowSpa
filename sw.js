@@ -1,4 +1,4 @@
-const CACHE_NAME = 'glow-admin-v3'; // Incrementé la versión para refrescar
+const CACHE_NAME = 'glow-admin-v4'; // Versión actualizada
 const ASSETS_TO_CACHE = [
   '/index.html',
   'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap',
@@ -6,127 +6,107 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
-// --- 1. INSTALACIÓN (Cachear recursos estáticos) ---
+const GLOW_ICON_DEFAULT = 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
+const GLOW_BADGE = 'https://i.ibb.co/sd4ygWGr/Glow-20260112-165349-0000.png';
+
+// 1. INSTALL
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
   self.skipWaiting();
 });
 
-// --- 2. ACTIVACIÓN (Limpiar cachés viejas) ---
+// 2. ACTIVATE
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('Borrando caché antigua:', cache);
-            return caches.delete(cache);
-          }
-        })
-      );
-    })
+    caches.keys().then((keys) => Promise.all(
+      keys.map((key) => {
+        if (key !== CACHE_NAME) return caches.delete(key);
+      })
+    ))
   );
   self.clients.claim();
 });
 
-// --- 3. FETCH (Estrategia: Network First, fallback a Cache, fallback a Placeholder) ---
+// 3. FETCH
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-
   event.respondWith(
     fetch(event.request)
-      .then((response) => {
-        if (!response || response.status !== 200 || response.type === 'error') {
-            return response;
-        }
-        const resClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-            try { cache.put(event.request, resClone); } catch (err) {}
-        });
-        return response;
+      .then((res) => {
+        const resClone = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+        return res;
       })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) return cachedResponse;
-            
-            // Fallbacks
-            if (event.request.headers.get('accept').includes('image')) {
-                return new Response(
-                    '<svg role="img" aria-labelledby="offline-title" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#888">Offline</text></svg>',
-                    { headers: { 'Content-Type': 'image/svg+xml' } }
-                );
-            }
-            if (event.request.headers.get('accept').includes('text/html')) {
-                 return caches.match('/index.html');
-            }
-            return new Response('Offline', { status: 404, statusText: 'Not Found' });
-        });
-      })
+      .catch(() => caches.match(event.request).then((cached) => {
+        return cached || new Response('Offline', { status: 404 });
+      }))
   );
 });
 
-// --- 4. NOTIFICACIONES PUSH & ACTUALIZACIÓN UI (CON LÓGICA DE FOTO) ---
-const GLOW_ICON_GRANDE = 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png';
-const GLOW_BADGE_BLANCO = 'https://i.ibb.co/sd4ygWGr/Glow-20260112-165349-0000.png';
-
+// --- 4. PUSH NOTIFICATION (Lógica mejorada) ---
 self.addEventListener('push', function(event) {
-    const data = event.data ? event.data.json() : {};
-    
-    // 1. Enviar datos a la app abierta (para que se actualice la lista sin recargar)
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+    let data = {};
+    try {
+        data = event.data.json();
+    } catch (e) {
+        console.error('Error parseando push data', e);
+        return;
+    }
+
+    // A. ENVIAR A CLIENTE (Para actualizar la UI en tiempo real)
+    const updateClientsPromise = self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then(clientList => {
             clientList.forEach(client => {
                 client.postMessage({
                     action: 'UPDATE_DATOS', 
-                    tipo: data.type,        
-                    payload: data.data      
+                    tipo: data.type,   // 'mensajes' o 'reservas'
+                    payload: data.data // El registro completo
                 });
             });
+        });
 
-            // 2. Mostrar la notificación
-            // AQUÍ ESTÁ EL CAMBIO CLAVE: Usamos data.image si existe
-            const title = data.title || 'Glow Admin';
-            
-            // Si Pipedream envió una imagen (foto del cliente), la usamos como icono
-            const iconToSend = data.image ? data.image : GLOW_ICON_GRANDE;
-            
-            const options = {
-                body: data.message || 'Nueva actividad',
-                icon: iconToSend,      // <-- Foto del cliente o Logo por defecto
-                badge: GLOW_BADGE_BLANCO,
-                vibrate: [100, 50, 100],
-                data: { url: '/index.html' },
-                tag: 'glow-notification', 
-                renotify: true,
-                actions: [
-                    { action: 'open', title: 'Ver Detalles' }
-                ]
-            };
+    // B. MOSTRAR NOTIFICACIÓN VISUAL
+    const title = data.title || 'Glow Admin';
+    const options = {
+        body: data.message || 'Tienes una nueva notificación',
+        icon: data.image || GLOW_ICON_DEFAULT, // Usa la foto del cliente si Pipedream la envió
+        badge: GLOW_BADGE,
+        vibrate: [100, 50, 100],
+        data: { url: '/index.html' }, // Guardamos la URL para el click
+        tag: data.type === 'mensajes' ? 'msg-group' : 'booking-group', // Agrupar por tipo
+        renotify: true,
+        actions: [
+            { action: 'open', title: 'Ver ahora' }
+        ]
+    };
 
-            return self.registration.showNotification(title, options);
-        })
-    );
+    const showNotificationPromise = self.registration.showNotification(title, options);
+
+    // Ejecutar ambas cosas en paralelo (más rápido y seguro)
+    event.waitUntil(Promise.all([updateClientsPromise, showNotificationPromise]));
 });
 
-// Al hacer click en la notificación, abrir la app
+// --- 5. NOTIFICATION CLICK ---
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
+    
+    // Si hay una acción específica (ej. botones), manéjala aquí
+    if (event.action === 'close') return;
+
     event.waitUntil(
-        clients.matchAll({ type: 'window' }).then(windowClients => {
-            // Si ya está abierta, enfocarla
-            for (let i = 0; i < windowClients.length; i++) {
-                const client = windowClients[i];
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            // 1. Si la app ya está abierta, enfocarla
+            for (let i = 0; i < clientList.length; i++) {
+                const client = clientList[i];
                 if (client.url.includes('index.html') && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Si no, abrir una nueva
-            if (clients.openWindow) {
-                return clients.openWindow('/index.html');
+            // 2. Si no, abrirla
+            if (self.clients.openWindow) {
+                return self.clients.openWindow('/index.html');
             }
         })
     );
