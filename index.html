@@ -1119,59 +1119,64 @@ updateStatsUI() {
                 if(data) {
                     this.conversations = {};
                     data.forEach(m => {
-                        if(!this.conversations[m.telefono_cliente]) this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
-                        this.conversations[m.telefono_cliente].msgs.push(m);
-                        this.conversations[m.telefono_cliente].last = m.contenido;
-                        if(m.emisor === 'cliente' && !m.leido) this.conversations[m.telefono_cliente].unread = true;
+                        const telStr = String(m.telefono_cliente); // Aseguramos String
+                        if(!this.conversations[telStr]) this.conversations[telStr] = { msgs: [], last: '', unread: false };
+                        this.conversations[telStr].msgs.push(m);
+                        this.conversations[telStr].last = m.contenido;
+                        if(m.emisor === 'cliente' && !m.leido) this.conversations[telStr].unread = true;
                     });
                     this.renderList();
                 }
             },
-subscribe() {
-    if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
-    
-    const channelId = `admin_chat_${admin.code}`;
-    this.realtimeChannel = supabaseClient.channel(channelId)
-        .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'mensajes', 
-            filter: `codigo_negocio=eq.${admin.code}` 
-        }, payload => {
-            console.log("🔥 NUEVO MENSAJE:", payload);
-            const m = payload.new;
-            
-            // Lógica de UI del chat
-            if(!this.conversations[m.telefono_cliente]) {
-                this.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
-            }
-            
-            this.conversations[m.telefono_cliente].msgs.push(m);
-            this.conversations[m.telefono_cliente].last = m.contenido;
-            
-            if(m.emisor === 'cliente') {
-                if(this.activePhone === m.telefono_cliente) { 
-                    this.renderBubble(m); 
-                    this.scroll(); 
-                } else { 
-                    this.conversations[m.telefono_cliente].unread = true; 
-                    document.getElementById('msgNotify').style.display = 'block';
-                    notifications.show('Mensaje Nuevo', `${m.telefono_cliente}`, 'mensaje');
-                }
-            } else if(this.activePhone === m.telefono_cliente) { 
-                this.renderBubble(m); 
-                this.scroll(); 
-            }
-            
-            this.renderList();
-        })
-        .subscribe((status) => {
-             console.log(`📡 Estado Chat: ${status}`);
-             if (status === 'CHANNEL_ERROR') {
-                 setTimeout(() => this.subscribe(), 5000); // Reconexión automática
-             }
-        });
-},
+            subscribe() {
+                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
+                
+                const channelId = `admin_chat_${admin.code}`;
+                this.realtimeChannel = supabaseClient.channel(channelId)
+                    .on('postgres_changes', { 
+                        event: 'INSERT', 
+                        schema: 'public', 
+                        table: 'mensajes', 
+                        filter: `codigo_negocio=eq.${admin.code}` 
+                    }, payload => {
+                        console.log("🔥 NUEVO MENSAJE (REALTIME):", payload);
+                        const m = payload.new;
+                        const telStr = String(m.telefono_cliente);
+                        
+                        // Lógica del chat
+                        if(!this.conversations[telStr]) {
+                            this.conversations[telStr] = { msgs: [], last: '', unread: false };
+                        }
+                        
+                        // EVITAR DUPLICADOS DE REALTIME
+                        if(this.conversations[telStr].msgs.some(msg => msg.id === m.id)) return;
+
+                        this.conversations[telStr].msgs.push(m);
+                        this.conversations[telStr].last = m.contenido;
+                        
+                        if(m.emisor === 'cliente') {
+                            if(this.activePhone === telStr) { 
+                                this.renderBubble(m); 
+                                this.scroll(); 
+                            } else { 
+                                this.conversations[telStr].unread = true; 
+                                document.getElementById('msgNotify').style.display = 'block';
+                                notifications.show('Mensaje Nuevo', `${telStr}`, 'mensaje');
+                            }
+                        } else if(this.activePhone === telStr) { 
+                            this.renderBubble(m); 
+                            this.scroll(); 
+                        }
+                        
+                        this.renderList();
+                    })
+                    .subscribe((status) => {
+                        console.log(`📡 Estado Chat: ${status}`);
+                        if (status === 'CHANNEL_ERROR') {
+                            setTimeout(() => this.subscribe(), 5000); // Reconexión automática
+                        }
+                    });
+            },
             
             renderList() {
                 const list = document.getElementById('inboxList'); list.innerHTML = '';
@@ -1187,7 +1192,7 @@ subscribe() {
                 sortedPhones.forEach(phone => {
                     const chat = this.conversations[phone];
                     const div = document.createElement('div'); div.className = 'chat-item';
-                    const client = admin.data.find(c => c.telefono === phone);
+                    const client = admin.data.find(c => String(c.telefono) === phone);
                     const name = client ? `${client.nombre} ${client.apellido}` : phone;
                     const initial = name.charAt(0).toUpperCase();
                     
@@ -1204,8 +1209,10 @@ subscribe() {
                 });
             },
             open(phone, name) {
-                this.activePhone = phone;
-                this.conversations[phone].unread = false;
+                this.activePhone = String(phone); // Aseguramos string
+                if(this.conversations[this.activePhone]) {
+                    this.conversations[this.activePhone].unread = false;
+                }
                 document.getElementById('msgNotify').style.display = 'none';
                 this.renderList();
                 
@@ -1215,7 +1222,10 @@ subscribe() {
                 document.getElementById('chatActiveUser').textContent = name;
                 document.getElementById('chatFooterInput').style.display = 'flex';
                 const body = document.getElementById('adminChatBody'); body.innerHTML = '';
-                this.conversations[phone].msgs.forEach(m => this.renderBubble(m));
+                
+                if(this.conversations[this.activePhone]) {
+                    this.conversations[this.activePhone].msgs.forEach(m => this.renderBubble(m));
+                }
                 this.scroll();
             },
             closeMobile() {
@@ -1302,66 +1312,67 @@ subscribe() {
         admin.init();
 
         // --- NUEVO SISTEMA: ACTUALIZACIÓN VÍA PUSH (SW MESSAGING) ---
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('message', (event) => {
-            console.log("📨 Datos recibidos del Service Worker:", event.data);
+        // ESTA ES LA PARTE CORREGIDA PARA QUE LOS MENSAJES SE VEAN EN TIEMPO REAL
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                console.log("📨 Datos recibidos del Service Worker:", event.data);
 
-            if (event.data.action === 'UPDATE_DATOS') {
-                const tipo = event.data.tipo;       // 'reservas' o 'mensajes'
-                const nuevoRegistro = event.data.payload;
+                if (event.data.action === 'UPDATE_DATOS') {
+                    const tipo = event.data.tipo;       
+                    const nuevoRegistro = event.data.payload;
 
-                // A. SI LLEGA UNA RESERVA
-                if (tipo === 'reservas') {
-                    // Verificar si ya existe para no duplicar
-                    const existe = admin.data.some(r => r.id === nuevoRegistro.id);
-                    if (!existe) {
-                        admin.data.unshift(nuevoRegistro); // Agregar al inicio
+                    // A. SI LLEGA UNA RESERVA
+                    if (tipo === 'reservas') {
+                        const existe = admin.data.some(r => r.id === nuevoRegistro.id);
+                        if (!existe) {
+                            admin.data.unshift(nuevoRegistro); 
+                            
+                            admin.updateStatsUI();
+                            if (document.getElementById('view-reservas').classList.contains('active')) {
+                                admin.renderList();
+                            }
+                            if (document.getElementById('view-calendar').classList.contains('active')) {
+                                adminCalendar.render();
+                            }
+                            notifications.show('Nueva Reserva', 'La lista se ha actualizado.', 'reserva');
+                        }
+                    }
+
+                    // B. SI LLEGA UN MENSAJE (CORREGIDO)
+                    if (tipo === 'mensajes') {
+                        const m = nuevoRegistro;
+                        const telefonoStr = String(m.telefono_cliente); // Convertir a String para evitar error de tipos
                         
-                        // Actualizar contadores y lista visualmente
-                        admin.updateStatsUI();
-                        if (document.getElementById('view-reservas').classList.contains('active')) {
-                            admin.renderList();
+                        // Inicializar conversación si es nuevo cliente
+                        if(!adminChat.conversations[telefonoStr]) {
+                            adminChat.conversations[telefonoStr] = { msgs: [], last: '', unread: false };
                         }
-                        if (document.getElementById('view-calendar').classList.contains('active')) {
-                            adminCalendar.render();
-                        }
-                        notifications.show('Nueva Reserva', 'La lista se ha actualizado.', 'reserva');
-                    }
-                }
+                        
+                        // EVITAR DUPLICADOS (Si Realtime ya lo puso, no hacer nada)
+                        const yaExiste = adminChat.conversations[telefonoStr].msgs.some(msg => msg.id === m.id);
+                        if (yaExiste) return;
 
-                // B. SI LLEGA UN MENSAJE
-                if (tipo === 'mensajes') {
-                    // Lógica del chat
-                    const m = nuevoRegistro;
-                    
-                    // Inicializar conversación si es nuevo cliente
-                    if(!adminChat.conversations[m.telefono_cliente]) {
-                        adminChat.conversations[m.telefono_cliente] = { msgs: [], last: '', unread: false };
+                        // Agregar mensaje
+                        adminChat.conversations[telefonoStr].msgs.push(m);
+                        adminChat.conversations[telefonoStr].last = m.contenido;
+                        
+                        // Si estamos viendo ese chat, hacer scroll y mostrar INMEDIATAMENTE
+                        if(adminChat.activePhone === telefonoStr) {
+                            adminChat.renderBubble(m); // ESTO PINTA LA BURBUJA
+                            adminChat.scroll();
+                        } else {
+                            // Si no estamos viendo ese chat, marcar pendiente
+                            adminChat.conversations[telefonoStr].unread = true;
+                            document.getElementById('msgNotify').style.display = 'block';
+                            notifications.show('Nuevo Mensaje', `De: ${telefonoStr}`, 'mensaje');
+                        }
+                        
+                        // Actualizar la lista lateral de chats
+                        adminChat.renderList();
                     }
-                    
-                    // Agregar mensaje
-                    adminChat.conversations[m.telefono_cliente].msgs.push(m);
-                    adminChat.conversations[m.telefono_cliente].last = m.contenido;
-                    
-                    // Si estamos viendo ese chat, hacer scroll y mostrar
-                    if(adminChat.activePhone === m.telefono_cliente) {
-                        adminChat.renderBubble(m);
-                        adminChat.scroll();
-                        // Marcar como leído en UI localmente si quieres
-                    } else {
-                        // Si no estamos viendo ese chat, marcar pendiente
-                        adminChat.conversations[m.telefono_cliente].unread = true;
-                        document.getElementById('msgNotify').style.display = 'block';
-                    }
-                    
-                    // Actualizar la lista lateral de chats
-                    adminChat.renderList();
                 }
-            }
-        });
-    }
+            });
+        }
     </script>
 </body>
 </html>
-
-
