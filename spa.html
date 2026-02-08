@@ -1029,56 +1029,54 @@
 const chatApp = {
     isOpen: false,
     activePhone: null,
-    
+    realtimeChannel: null, // <--- NUEVO: Guardamos referencia al canal actual
+
     init() {
-        // Intentar cargar si ya hay teléfono en memoria al abrir la app
-        if(app.data.phone) {
+        if (app.data.phone) {
             this.startChat(app.data.phone);
         }
     },
 
-    // Nueva función para iniciar todo correctamente
     startChat(phone) {
         this.activePhone = phone;
-        this.loadHistory(); // Cargar mensajes viejos
-        this.subscribe();   // Escuchar mensajes nuevos
+        this.loadHistory();
+        this.subscribe(); // Escuchar mensajes nuevos
         document.getElementById('headerChatBtn').classList.remove('hidden');
     },
 
-    enable() { 
-        document.getElementById('headerChatBtn').classList.remove('hidden'); 
+    enable() {
+        document.getElementById('headerChatBtn').classList.remove('hidden');
     },
 
     toggle() {
         this.isOpen = !this.isOpen;
         document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
-        if(this.isOpen) {
+        if (this.isOpen) {
             document.getElementById('chatBadge').classList.remove('active');
             this.scrollToBottom();
-            // Aseguramos recarga por si acaso
-            if(this.activePhone) this.loadHistory(); 
+            // Recargamos historial por seguridad al abrir
+            if (this.activePhone) this.loadHistory();
         }
     },
 
-    handleEnter(e) { if(e.key === 'Enter') this.send(); },
+    handleEnter(e) { if (e.key === 'Enter') this.send(); },
 
-    // 1. CARGAR HISTORIAL (La parte que faltaba visualizar bien)
     async loadHistory() {
-        if(!this.activePhone || !BUSINESS_CODE) return;
+        if (!this.activePhone || !BUSINESS_CODE) return;
 
         const { data, error } = await supabaseClient
             .from('mensajes')
             .select('*')
             .eq('codigo_negocio', BUSINESS_CODE)
             .eq('telefono_cliente', this.activePhone)
-            .order('created_at', { ascending: true }); // Ordenar del más viejo al más nuevo
+            .order('created_at', { ascending: true });
 
         const container = document.getElementById('chatContainer');
-        container.innerHTML = ''; // Limpiar chat previo
-        
+        container.innerHTML = '';
+
         if (error) console.error("Error cargando chat:", error);
 
-        if(data && data.length > 0) {
+        if (data && data.length > 0) {
             data.forEach(m => this.renderMessage(m));
             this.scrollToBottom();
         } else {
@@ -1086,50 +1084,56 @@ const chatApp = {
         }
     },
 
-    // 2. ESCUCHAR NUEVOS MENSAJES (Realtime para recibir respuesta del Admin)
+    // --- AQUÍ ESTABA EL ERROR ---
     subscribe() {
-        if(!this.activePhone) return;
+        if (!this.activePhone) return;
 
-        // Limpiar suscripciones previas para no duplicar
-        supabaseClient.removeAllChannels();
+        // CORRECCIÓN: No uses removeAllChannels().
+        // Si ya existe un canal suscrito, lo desuscribimos específicamente a él.
+        if (this.realtimeChannel) {
+            supabaseClient.removeChannel(this.realtimeChannel);
+            this.realtimeChannel = null;
+        }
 
-        supabaseClient.channel('chat_cliente_room')
-            .on('postgres_changes', { 
-                event: 'INSERT', 
-                schema: 'public', 
-                table: 'mensajes', 
-                filter: `telefono_cliente=eq.${this.activePhone}` // Solo mensajes de este cliente
-            }, 
-            payload => {
-                // Verificar que sea de este negocio
-                if(payload.new.codigo_negocio === BUSINESS_CODE) {
-                    // Si el mensaje es "No hay mensajes aún", lo quitamos
-                    const container = document.getElementById('chatContainer');
-                    if(container.innerText.includes('No hay mensajes')) container.innerHTML = '';
+        // Creamos una referencia única para este canal
+        const channelName = `chat_cliente_${this.activePhone}_${BUSINESS_CODE}`;
 
-                    this.renderMessage(payload.new);
-                    
-                    // Si el chat está cerrado y escribe el Admin, mostrar puntito rojo
-                    if(!this.isOpen && payload.new.emisor === 'admin') {
-                        document.getElementById('chatBadge').classList.add('active');
-                        // Opcional: Sonido de notificación
+        this.realtimeChannel = supabaseClient.channel(channelName)
+            .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'mensajes',
+                    filter: `telefono_cliente=eq.${this.activePhone}`
+                },
+                payload => {
+                    // Validar negocio
+                    if (payload.new.codigo_negocio === BUSINESS_CODE) {
+                        const container = document.getElementById('chatContainer');
+                        if (container.innerText.includes('No hay mensajes')) container.innerHTML = '';
+
+                        this.renderMessage(payload.new);
+
+                        if (!this.isOpen && payload.new.emisor === 'admin') {
+                            document.getElementById('chatBadge').classList.add('active');
+                        }
                     }
-                }
-            })
+                })
             .subscribe((status) => {
                 console.log("Estado Chat Realtime:", status);
+                // Si falla por Timeout, reintentar suavemente en 5 segs
+                if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+                    setTimeout(() => this.subscribe(), 5000);
+                }
             });
     },
 
     renderMessage(msg) {
         const container = document.getElementById('chatContainer');
         const div = document.createElement('div');
-        // 'me' es el cliente, 'admin' es el negocio
         div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
         div.textContent = msg.contenido;
-        
-        // Agregar hora pequeña (opcional)
-        const time = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const timeSpan = document.createElement('span');
         timeSpan.style.fontSize = '0.65rem';
         timeSpan.style.opacity = '0.7';
@@ -1146,14 +1150,11 @@ const chatApp = {
     async send() {
         const input = document.getElementById('chatInput');
         const txt = input.value.trim();
-        if(!txt) return;
+        if (!txt) return;
+        if (!this.activePhone) return alert("Completa el registro primero.");
 
-        if(!this.activePhone) return alert("Completa el registro primero.");
-
-        // Limpiar input visualmente inmediato
         input.value = '';
 
-        // Enviar a Supabase
         const { error } = await supabaseClient.from('mensajes').insert([{
             codigo_negocio: BUSINESS_CODE,
             telefono_cliente: this.activePhone,
@@ -1162,9 +1163,7 @@ const chatApp = {
             leido: false
         }]);
 
-        if(error) alert("Error al enviar: " + error.message);
-        // No necesitamos renderizarlo aquí manualmente porque el Realtime (subscribe)
-        // lo detectará y lo pintará automáticamente.
+        if (error) alert("Error al enviar: " + error.message);
     },
 
     scrollToBottom() {
@@ -1183,6 +1182,7 @@ const chatApp = {
     </script>
 </body>
 </html>
+
 
 
 
