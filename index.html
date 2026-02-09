@@ -914,20 +914,36 @@
             },
 
             async loadData() {
-                // Carga inicial
-                const { data } = await supabaseClient.from('reservas')
-                    .select('*')
-                    .eq('codigo_negocio', this.code)
-                    .order('created_at', { ascending: false });
-                
-                if(data) {
-                    this.data = data;
-                    this.renderList();
-                    adminCalendar.init();
-                    this.subscribe(); // Iniciar suscripción Realtime robusta
-                }
-                adminChat.init();
-            },
+    console.log("📥 Cargando datos para:", this.code);
+    
+    // 1. Validamos que el código esté limpio
+    const cleanCode = this.code.trim().toUpperCase();
+
+    const { data, error } = await supabaseClient.from('reservas')
+        .select('*')
+        .eq('codigo_negocio', cleanCode) // Aseguramos mayúsculas
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("❌ Error Supabase:", error);
+        notifications.show('Error', 'No se pudieron cargar las reservas');
+        return;
+    }
+
+    console.log("✅ Reservas encontradas:", data.length);
+
+    if(data) {
+        this.data = data;
+        
+        // Actualizamos UI
+        this.updateStatsUI(); // Forzar actualización de contadores
+        this.renderList();
+        adminCalendar.init(); // Renderizar calendario
+        
+        this.subscribe();
+    }
+    adminChat.init();
+},
 
      subscribe() {
     // 1. Limpiar canal anterior si existe
@@ -999,15 +1015,17 @@
         });
 },
 
+            
 // Agrega esta pequeña función auxiliar si no la tienes, para refrescar los números
 updateStatsUI() {
-    try {
-        const pending = this.data.filter(r => r.estado === 'pendiente').length;
-        const confirmed = this.data.filter(r => r.estado === 'confirmada').length;
-        
-        if(document.getElementById('cStatPending')) document.getElementById('cStatPending').innerText = pending;
-        if(document.getElementById('cStatConfirmed')) document.getElementById('cStatConfirmed').innerText = confirmed;
-    } catch(e) { console.log(e); }
+    const pending = this.data.filter(r => r.estado === 'pendiente').length;
+    const confirmed = this.data.filter(r => r.estado === 'confirmada').length;
+    
+    const elPending = document.getElementById('cStatPending');
+    const elConfirmed = document.getElementById('cStatConfirmed');
+    
+    if(elPending) elPending.innerText = pending;
+    if(elConfirmed) elConfirmed.innerText = confirmed;
 },
             filter(status) {
                 this.renderList(status);
@@ -1106,54 +1124,70 @@ updateStatsUI() {
             },
             closeModal() { document.getElementById('dateModal').style.display = 'none'; }
         };
+const adminChat = {
+    activePhone: null, 
+    conversations: {}, 
+    realtimeChannel: null,
 
-        const adminChat = {
-            activePhone: null, conversations: {}, realtimeChannel: null,
-            init() { 
-                if(!admin.code) return;
-                this.loadConversations();
-                this.subscribe();
-            },
-            async loadConversations() {
-                const { data } = await supabaseClient.from('mensajes').select('*').eq('codigo_negocio', admin.code).order('created_at', { ascending: true });
-                if(data) {
-                    this.conversations = {};
-                    data.forEach(m => {
-                        const telStr = String(m.telefono_cliente); // Aseguramos String
-                        if(!this.conversations[telStr]) this.conversations[telStr] = { msgs: [], last: '', unread: false };
-                        this.conversations[telStr].msgs.push(m);
-                        this.conversations[telStr].last = m.contenido;
-                        if(m.emisor === 'cliente' && !m.leido) this.conversations[telStr].unread = true;
-                    });
-                    this.renderList();
-                }
-            },
-            subscribe() {
-                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
-                
-                const channelId = `admin_chat_${admin.code}`;
-                this.realtimeChannel = supabaseClient.channel(channelId)
-                    .on('postgres_changes', { 
-                        event: 'INSERT', 
-                        schema: 'public', 
-                        table: 'mensajes', 
-                        filter: `codigo_negocio=eq.${admin.code}` 
-                    }, payload => {
-                        console.log("🔥 NUEVO MENSAJE (REALTIME):", payload);
-                        const m = payload.new;
+    init() { 
+        if(!admin.code) return;
+        this.loadConversations();
+        this.subscribe();
+    },
+
+    async loadConversations() {
+        const { data } = await supabaseClient
+            .from('mensajes')
+            .select('*')
+            .eq('codigo_negocio', admin.code)
+            .order('created_at', { ascending: true });
+
+        if(data) {
+            this.conversations = {};
+            // Usamos la función auxiliar para procesar el historial
+            data.forEach(m => this.procesarMensajeLocal(m));
+            this.renderList();
+        }
+    },
+
+    // --- ESTA ES LA FUNCIÓN QUE TE FALTABA Y CAUSABA ERRORES ---
+    procesarMensajeLocal(m) {
+        const telStr = String(m.telefono_cliente);
+        
+        if(!this.conversations[telStr]) {
+            this.conversations[telStr] = { msgs: [], last: '', unread: false };
+        }
+        
+        // Evitar duplicados por ID
+        if(this.conversations[telStr].msgs.some(msg => msg.id === m.id)) return false;
+
+        this.conversations[telStr].msgs.push(m);
+        this.conversations[telStr].last = m.contenido;
+        
+        if(m.emisor === 'cliente' && !m.leido) {
+             this.conversations[telStr].unread = true;
+        }
+        return true; // Indica que fue un mensaje nuevo procesado
+    },
+
+    subscribe() {
+        if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
+        
+        const channelId = `admin_chat_live_${admin.code}`;
+
+        this.realtimeChannel = supabaseClient.channel(channelId)
+            .on('postgres_changes', { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'mensajes', 
+                    filter: `codigo_negocio=eq.${admin.code}` 
+                }, 
+                (payload) => {
+                    const m = payload.new;
+                    const esNuevo = this.procesarMensajeLocal(m);
+                    
+                    if(esNuevo) {
                         const telStr = String(m.telefono_cliente);
-                        
-                        // Lógica del chat
-                        if(!this.conversations[telStr]) {
-                            this.conversations[telStr] = { msgs: [], last: '', unread: false };
-                        }
-                        
-                        // EVITAR DUPLICADOS DE REALTIME
-                        if(this.conversations[telStr].msgs.some(msg => msg.id === m.id)) return;
-
-                        this.conversations[telStr].msgs.push(m);
-                        this.conversations[telStr].last = m.contenido;
-                        
                         if(m.emisor === 'cliente') {
                             if(this.activePhone === telStr) { 
                                 this.renderBubble(m); 
@@ -1161,91 +1195,107 @@ updateStatsUI() {
                             } else { 
                                 this.conversations[telStr].unread = true; 
                                 document.getElementById('msgNotify').style.display = 'block';
-                                notifications.show('Mensaje Nuevo', `${telStr}`, 'mensaje');
+                                notifications.show('Mensaje', telStr, 'mensaje');
                             }
                         } else if(this.activePhone === telStr) { 
                             this.renderBubble(m); 
                             this.scroll(); 
                         }
-                        
                         this.renderList();
-                    })
-                    .subscribe((status) => {
-                        console.log(`📡 Estado Chat: ${status}`);
-                        if (status === 'CHANNEL_ERROR') {
-                            setTimeout(() => this.subscribe(), 5000); // Reconexión automática
-                        }
-                    });
-            },
+                    }
+                }
+            )
+            .subscribe();
+    },
+    
+    renderList() {
+        const list = document.getElementById('inboxList'); list.innerHTML = '';
+        const sortedPhones = Object.keys(this.conversations).sort((a,b) => {
+            return this.conversations[b].unread - this.conversations[a].unread;
+        });
+
+        if(sortedPhones.length === 0) {
+            list.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc;">No hay mensajes</div>';
+            return;
+        }
+
+        sortedPhones.forEach(phone => {
+            const chat = this.conversations[phone];
+            const div = document.createElement('div'); div.className = 'chat-item';
+            const client = admin.data.find(c => String(c.telefono) === phone);
+            const name = client ? `${client.nombre} ${client.apellido}` : phone;
+            const initial = name.charAt(0).toUpperCase();
             
-            renderList() {
-                const list = document.getElementById('inboxList'); list.innerHTML = '';
-                const sortedPhones = Object.keys(this.conversations).sort((a,b) => {
-                   return this.conversations[b].unread - this.conversations[a].unread;
-                });
+            div.innerHTML = `
+                <div class="chat-avatar">${initial}</div>
+                <div class="chat-info">
+                    <div class="chat-name">${name}</div>
+                    <div class="chat-preview" style="${chat.unread?'font-weight:bold; color:black':''}">${chat.last}</div>
+                </div>
+                ${chat.unread ? '<div class="chat-unread-dot"></div>' : ''}
+            `;
+            div.onclick = () => this.open(phone, name);
+            list.appendChild(div);
+        });
+    },
 
-                if(sortedPhones.length === 0) {
-                    list.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc;">No hay mensajes</div>';
-                    return;
-                }
+    open(phone, name) {
+        this.activePhone = String(phone);
+        if(this.conversations[this.activePhone]) {
+            this.conversations[this.activePhone].unread = false;
+        }
+        document.getElementById('msgNotify').style.display = 'none';
+        this.renderList();
+        
+        const view = document.getElementById('adminChatView');
+        view.classList.add('active'); 
+        
+        document.getElementById('chatActiveUser').textContent = name;
+        document.getElementById('chatFooterInput').style.display = 'flex';
+        const body = document.getElementById('adminChatBody'); body.innerHTML = '';
+        
+        if(this.conversations[this.activePhone]) {
+            this.conversations[this.activePhone].msgs.forEach(m => this.renderBubble(m));
+        }
+        this.scroll();
+    },
 
-                sortedPhones.forEach(phone => {
-                    const chat = this.conversations[phone];
-                    const div = document.createElement('div'); div.className = 'chat-item';
-                    const client = admin.data.find(c => String(c.telefono) === phone);
-                    const name = client ? `${client.nombre} ${client.apellido}` : phone;
-                    const initial = name.charAt(0).toUpperCase();
-                    
-                    div.innerHTML = `
-                        <div class="chat-avatar">${initial}</div>
-                        <div class="chat-info">
-                            <div class="chat-name">${name}</div>
-                            <div class="chat-preview" style="${chat.unread?'font-weight:bold; color:black':''}">${chat.last}</div>
-                        </div>
-                        ${chat.unread ? '<div class="chat-unread-dot"></div>' : ''}
-                    `;
-                    div.onclick = () => this.open(phone, name);
-                    list.appendChild(div);
-                });
-            },
-            open(phone, name) {
-                this.activePhone = String(phone); // Aseguramos string
-                if(this.conversations[this.activePhone]) {
-                    this.conversations[this.activePhone].unread = false;
-                }
-                document.getElementById('msgNotify').style.display = 'none';
-                this.renderList();
-                
-                const view = document.getElementById('adminChatView');
-                view.classList.add('active'); 
-                
-                document.getElementById('chatActiveUser').textContent = name;
-                document.getElementById('chatFooterInput').style.display = 'flex';
-                const body = document.getElementById('adminChatBody'); body.innerHTML = '';
-                
-                if(this.conversations[this.activePhone]) {
-                    this.conversations[this.activePhone].msgs.forEach(m => this.renderBubble(m));
-                }
-                this.scroll();
-            },
-            closeMobile() {
-                document.getElementById('adminChatView').classList.remove('active');
-                this.activePhone = null;
-            },
-            renderBubble(m) {
-                const div = document.createElement('div'); div.className = `msg-bubble ${m.emisor}`;
-                div.textContent = m.contenido;
-                document.getElementById('adminChatBody').appendChild(div);
-            },
-            async send() {
-                const inp = document.getElementById('adminChatInput');
-                const txt = inp.value.trim();
-                if(!txt || !this.activePhone) return;
-                inp.value = '';
-                await supabaseClient.from('mensajes').insert([{ codigo_negocio: admin.code, telefono_cliente: this.activePhone, emisor: 'admin', contenido: txt, leido: true }]);
-            },
-            scroll() { const b = document.getElementById('adminChatBody'); setTimeout(()=>b.scrollTop=b.scrollHeight,100); }
-        };
+    closeMobile() {
+        document.getElementById('adminChatView').classList.remove('active');
+        this.activePhone = null;
+    },
+
+    renderBubble(m) {
+        const div = document.createElement('div'); div.className = `msg-bubble ${m.emisor}`;
+        div.textContent = m.contenido;
+        document.getElementById('adminChatBody').appendChild(div);
+    },
+
+    async send() {
+        const inp = document.getElementById('adminChatInput');
+        const txt = inp.value.trim();
+        if(!txt || !this.activePhone) return;
+        
+        // Optimismo UI (Mostrar antes de enviar)
+        const fakeMsg = { contenido: txt, emisor: 'admin', telefono_cliente: this.activePhone, id: 'temp'+Date.now() };
+        this.renderBubble(fakeMsg);
+        this.scroll();
+        inp.value = '';
+
+        await supabaseClient.from('mensajes').insert([{ 
+            codigo_negocio: admin.code, 
+            telefono_cliente: this.activePhone, 
+            emisor: 'admin', 
+            contenido: txt, 
+            leido: true 
+        }]);
+    },
+
+    scroll() { 
+        const b = document.getElementById('adminChatBody'); 
+        setTimeout(()=>b.scrollTop=b.scrollHeight, 50); 
+    }
+};
 
         const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
 
@@ -1423,4 +1473,5 @@ if ('serviceWorker' in navigator) {
     </script>
 </body>
 </html>
+
 
