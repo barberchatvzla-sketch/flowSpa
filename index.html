@@ -1116,165 +1116,142 @@
             closeModal() { document.getElementById('dateModal').style.display = 'none'; }
         };
 
-       // --- REEMPLAZA EL OBJETO adminChat COMPLETO ---
-const adminChat = {
-    activePhone: null, 
-    conversations: {}, 
-    realtimeChannel: null,
+        const adminChat = {
+            activePhone: null, 
+            conversations: {}, 
+            realtimeChannel: null,
 
-    init() { 
-        if(!admin.code) return;
-        this.loadConversations();
-        this.subscribe(); // Suscripción nativa a Supabase
-    },
+            init() { 
+                if(!admin.code) return;
+                this.loadConversations();
+                this.subscribe(); // Suscripción nativa a Supabase
+            },
 
-    async loadConversations() {
-        const { data, error } = await supabaseClient
-            .from('mensajes')
-            .select('*')
-            .eq('codigo_negocio', admin.code)
-            .order('created_at', { ascending: true });
+            async loadConversations() {
+                const { data, error } = await supabaseClient
+                    .from('mensajes')
+                    .select('*')
+                    .eq('codigo_negocio', admin.code)
+                    .order('created_at', { ascending: true });
 
-        if(data) {
-            this.conversations = {};
-            data.forEach(m => this.procesarMensajeLocal(m)); // Procesamos historial
-            this.renderList();
-        }
-    },
-
-    // ESTA FUNCIÓN ES LA CLAVE: Procesa mensajes venga de donde venga (Push o Realtime)
-    procesarMensajeLocal(m) {
-        const telStr = String(m.telefono_cliente);
-        
-        if(!this.conversations[telStr]) {
-            this.conversations[telStr] = { msgs: [], last: '', unread: false };
-        }
-        
-        // Evitar duplicados (Si llega por Push Y por Realtime a la vez)
-        if(this.conversations[telStr].msgs.some(msg => msg.id === m.id)) return false;
-
-        this.conversations[telStr].msgs.push(m);
-        this.conversations[telStr].last = m.contenido;
-        
-        // Si el mensaje es de un cliente y NO es el chat activo -> Marcar no leído
-        if(m.emisor === 'cliente' && !m.leido && this.activePhone !== telStr) {
-            this.conversations[telStr].unread = true;
-        }
-        return true; // Retorna true si fue un mensaje NUEVO
-    },
-
-    subscribe() {
-        // Limpiamos canal anterior por seguridad
-        if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
-        
-        const channelName = `admin_chat_${admin.code}`;
-        console.log("🔌 Admin: Conectando Chat Realtime a", channelName);
-
-        this.realtimeChannel = supabaseClient.channel(channelName)
-            .on(
-                'postgres_changes', 
-                { 
-                    event: 'INSERT', 
-                    schema: 'public', 
-                    table: 'mensajes', 
-                    filter: `codigo_negocio=eq.${admin.code}` 
-                }, 
-                (payload) => {
-                    console.log('📨 Admin (Realtime Nativo):', payload.new);
-                    this.handleNewMessage(payload.new);
+                if(data) {
+                    this.conversations = {};
+                    data.forEach(m => this.procesarMensajeLocal(m)); // Procesamos historial
+                    this.renderList();
                 }
-            )
-            .subscribe((status) => console.log("Admin Chat Status:", status));
-    },
+            },
 
-    // Función unificada para manejar UI cuando llega mensaje nuevo
-    handleNewMessage(m) {
-        const esNuevo = this.procesarMensajeLocal(m);
-        
-        if(esNuevo) {
-            const telStr = String(m.telefono_cliente);
+            // ESTA FUNCIÓN ES LA CLAVE: Procesa mensajes venga de donde venga (Push o Realtime)
+            procesarMensajeLocal(m) {
+                const telStr = String(m.telefono_cliente);
+                
+                if(!this.conversations[telStr]) {
+                    this.conversations[telStr] = { msgs: [], last: '', unread: false };
+                }
+                
+                // Evitar duplicados (Si llega por Push Y por Realtime a la vez)
+                if(this.conversations[telStr].msgs.some(msg => msg.id === m.id)) return false;
+
+                this.conversations[telStr].msgs.push(m);
+                this.conversations[telStr].last = m.contenido;
+                
+                // Si el mensaje es de un cliente y NO es el chat activo -> Marcar no leído
+                if(m.emisor === 'cliente' && !m.leido && this.activePhone !== telStr) {
+                    this.conversations[telStr].unread = true;
+                }
+                return true; // Retorna true si fue un mensaje NUEVO
+            },
+
+            subscribe() {
+                // Limpiamos canal anterior por seguridad
+                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
+                
+                const channelName = `admin_chat_${admin.code}`;
+                console.log("🔌 Admin: Conectando Chat Realtime a", channelName);
+
+                this.realtimeChannel = supabaseClient.channel(channelName)
+                    .on(
+                        'postgres_changes', 
+                        { 
+                            event: 'INSERT', 
+                            schema: 'public', 
+                            table: 'mensajes', 
+                            filter: `codigo_negocio=eq.${admin.code}` 
+                        }, 
+                        (payload) => {
+                            console.log('📨 Admin (Realtime Nativo):', payload.new);
+                            this.handleNewMessage(payload.new);
+                        }
+                    )
+                    .subscribe((status) => console.log("Admin Chat Status:", status));
+            },
+
+            // Función unificada para manejar UI cuando llega mensaje nuevo
+            handleNewMessage(m) {
+                const esNuevo = this.procesarMensajeLocal(m);
+                
+                if(esNuevo) {
+                    const telStr = String(m.telefono_cliente);
+                    
+                    // Si es el chat abierto actualmente
+                    if(this.activePhone === telStr) { 
+                        this.renderBubble(m); 
+                        this.scroll(); 
+                        // Marcar como leído al instante si está abierto (Optimistic UI)
+                        if(m.emisor === 'cliente') {
+                            supabaseClient.from('mensajes').update({ leido: true }).eq('id', m.id);
+                        }
+                    } else if (m.emisor === 'cliente') { 
+                        // Si es de otro, mostrar notificación visual en la UI
+                        this.conversations[telStr].unread = true; 
+                        document.getElementById('msgNotify').style.display = 'block';
+                        notifications.show('Nuevo Mensaje', `De: ${telStr}`, 'mensaje');
+                    }
+                    this.renderList();
+                }
+            },
             
-            // Si es el chat abierto actualmente
-            if(this.activePhone === telStr) { 
-                this.renderBubble(m); 
-                this.scroll(); 
-                // Marcar como leído al instante si está abierto (Optimistic UI)
-                if(m.emisor === 'cliente') {
-                    supabaseClient.from('mensajes').update({ leido: true }).eq('id', m.id);
-                }
-            } else if (m.emisor === 'cliente') { 
-                // Si es de otro, mostrar notificación visual en la UI
-                this.conversations[telStr].unread = true; 
-                document.getElementById('msgNotify').style.display = 'block';
-                notifications.show('Nuevo Mensaje', `De: ${telStr}`, 'mensaje');
-            }
-            this.renderList();
-        }
-    },
-    
-    // ... (Mantén renderList, open, closeMobile, renderBubble, send, scroll IGUALES) ...
-    renderList() { /* ... tu código de renderList ... */
-        const list = document.getElementById('inboxList'); list.innerHTML = '';
-        const sortedPhones = Object.keys(this.conversations).sort((a,b) => {
-             if (this.conversations[b].unread !== this.conversations[a].unread) return this.conversations[b].unread - this.conversations[a].unread;
-             return 0; 
-        });
-        if(sortedPhones.length === 0) { list.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc;">No hay mensajes</div>'; return; }
-        sortedPhones.forEach(phone => {
-            const chat = this.conversations[phone];
-            const div = document.createElement('div'); div.className = 'chat-item';
-            const client = admin.data.find(c => String(c.telefono) === phone);
-            const name = client ? `${client.nombre} ${client.apellido}` : phone;
-            const initial = name.charAt(0).toUpperCase();
-            div.innerHTML = `<div class="chat-avatar">${initial}</div><div class="chat-info"><div class="chat-name">${name}</div><div class="chat-preview" style="${chat.unread?'font-weight:bold; color:black':''}">${chat.last}</div></div>${chat.unread ? '<div class="chat-unread-dot"></div>' : ''}`;
-            div.onclick = () => this.open(phone, name);
-            list.appendChild(div);
-        });
-    },
-    open(phone, name) {
-        this.activePhone = String(phone);
-        if(this.conversations[this.activePhone]) this.conversations[this.activePhone].unread = false;
-        document.getElementById('msgNotify').style.display = 'none';
-        this.renderList();
-        const view = document.getElementById('adminChatView'); view.classList.add('active'); 
-        document.getElementById('chatActiveUser').textContent = name;
-        document.getElementById('chatFooterInput').style.display = 'flex';
-        const body = document.getElementById('adminChatBody'); body.innerHTML = '';
-        if(this.conversations[this.activePhone]) this.conversations[this.activePhone].msgs.forEach(m => this.renderBubble(m));
-        this.scroll();
-    },
-    closeMobile() { document.getElementById('adminChatView').classList.remove('active'); this.activePhone = null; },
-    renderBubble(m) { const div = document.createElement('div'); div.className = `msg-bubble ${m.emisor}`; div.textContent = m.contenido; document.getElementById('adminChatBody').appendChild(div); },
-    async send() {
-        const inp = document.getElementById('adminChatInput'); const txt = inp.value.trim();
-        if(!txt || !this.activePhone) return;
-        const fakeMsg = { contenido: txt, emisor: 'admin', telefono_cliente: this.activePhone, id: 'temp'+Date.now() };
-        this.procesarMensajeLocal(fakeMsg); this.renderBubble(fakeMsg); this.scroll(); inp.value = '';
-        await supabaseClient.from('mensajes').insert([{ codigo_negocio: admin.code, telefono_cliente: this.activePhone, emisor: 'admin', contenido: txt, leido: true }]);
-    },
-    scroll() { const b = document.getElementById('adminChatBody'); setTimeout(()=>b.scrollTop=b.scrollHeight, 50); }
-};
-
-// --- AL FINAL DEL SCRIPT, ESCUCHAR AL SERVICE WORKER (PIPEDREAM) ---
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-        console.log("📨 Admin (Desde Push Pipedream):", event.data);
-
-        if (event.data.action === 'NUEVA_DATA_PUSH') {
-            const { tipo, record } = event.data;
-
-            if (tipo === 'mensajes') {
-                document.getElementById('notifySound').play().catch(()=>{});
-                // Usamos la misma función centralizada
-                adminChat.handleNewMessage(record); 
-            } 
-            else if (tipo === 'reservas') {
-                notifications.show('Nueva Reserva', `${record.nombre}`, 'reserva');
-                admin.loadData(); // Recargar lista de reservas
-            }
-        }
-    });
-}
+            renderList() {
+                const list = document.getElementById('inboxList'); list.innerHTML = '';
+                const sortedPhones = Object.keys(this.conversations).sort((a,b) => {
+                    if (this.conversations[b].unread !== this.conversations[a].unread) return this.conversations[b].unread - this.conversations[a].unread;
+                    return 0; 
+                });
+                if(sortedPhones.length === 0) { list.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc;">No hay mensajes</div>'; return; }
+                sortedPhones.forEach(phone => {
+                    const chat = this.conversations[phone];
+                    const div = document.createElement('div'); div.className = 'chat-item';
+                    const client = admin.data.find(c => String(c.telefono) === phone);
+                    const name = client ? `${client.nombre} ${client.apellido}` : phone;
+                    const initial = name.charAt(0).toUpperCase();
+                    div.innerHTML = `<div class="chat-avatar">${initial}</div><div class="chat-info"><div class="chat-name">${name}</div><div class="chat-preview" style="${chat.unread?'font-weight:bold; color:black':''}">${chat.last}</div></div>${chat.unread ? '<div class="chat-unread-dot"></div>' : ''}`;
+                    div.onclick = () => this.open(phone, name);
+                    list.appendChild(div);
+                });
+            },
+            open(phone, name) {
+                this.activePhone = String(phone);
+                if(this.conversations[this.activePhone]) this.conversations[this.activePhone].unread = false;
+                document.getElementById('msgNotify').style.display = 'none';
+                this.renderList();
+                const view = document.getElementById('adminChatView'); view.classList.add('active'); 
+                document.getElementById('chatActiveUser').textContent = name;
+                document.getElementById('chatFooterInput').style.display = 'flex';
+                const body = document.getElementById('adminChatBody'); body.innerHTML = '';
+                if(this.conversations[this.activePhone]) this.conversations[this.activePhone].msgs.forEach(m => this.renderBubble(m));
+                this.scroll();
+            },
+            closeMobile() { document.getElementById('adminChatView').classList.remove('active'); this.activePhone = null; },
+            renderBubble(m) { const div = document.createElement('div'); div.className = `msg-bubble ${m.emisor}`; div.textContent = m.contenido; document.getElementById('adminChatBody').appendChild(div); },
+            async send() {
+                const inp = document.getElementById('adminChatInput'); const txt = inp.value.trim();
+                if(!txt || !this.activePhone) return;
+                const fakeMsg = { contenido: txt, emisor: 'admin', telefono_cliente: this.activePhone, id: 'temp'+Date.now() };
+                this.procesarMensajeLocal(fakeMsg); this.renderBubble(fakeMsg); this.scroll(); inp.value = '';
+                await supabaseClient.from('mensajes').insert([{ codigo_negocio: admin.code, telefono_cliente: this.activePhone, emisor: 'admin', contenido: txt, leido: true }]);
+            },
+            scroll() { const b = document.getElementById('adminChatBody'); setTimeout(()=>b.scrollTop=b.scrollHeight, 50); }
+        };
 
         const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
 
@@ -1305,9 +1282,12 @@ if ('serviceWorker' in navigator) {
                         applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
                     });
 
+                    // --- SOLUCIÓN: Convertir a JSON explícito ---
+                    const subJson = subscription.toJSON();
+
                     await supabaseClient.from('admin_subscriptions').insert({
                             codigo_negocio: admin.code,
-                            subscription: subscription
+                            subscription: subJson // Enviamos el JSON serializado
                         });
                     
                     notifications.show('Notificaciones Activadas', 'Recibirás alertas aquí.');
@@ -1374,4 +1354,3 @@ if ('serviceWorker' in navigator) {
     </script>
 </body>
 </html>
-
