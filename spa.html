@@ -20,6 +20,7 @@
     <meta property="twitter:image" content="__OG_IMAGE__">
 
     <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Glow App">
@@ -157,21 +158,19 @@
             position: relative; 
             z-index: 2; 
             margin-bottom: 60px; 
-            padding: 0 20px; /* Reducido de 40px para dar más espacio a los lados */
+            padding: 0 20px;
             text-align: center; 
             color: white; 
-            width: 100%; /* Asegura el ancho completo para centrar bien */
+            width: 100%;
         }
         .brand-large { 
             font-family: var(--font-serif); 
-            /* AQUÍ ESTÁ LA MAGIA: */
-            /* clamp(mínimo, ideal, máximo) ajusta el texto al ancho de la pantalla */
             font-size: clamp(2.5rem, 13vw, 4.5rem); 
-            font-weight: 700; /* Más negrita como en tu imagen */
+            font-weight: 700; 
             margin-bottom: 15px; 
-            line-height: 0.95; /* Líneas más juntas para que se vea compacto */
-            text-transform: uppercase; /* Fuerza mayúsculas */
-            word-wrap: break-word; /* Evita que se salga de la pantalla */
+            line-height: 0.95;
+            text-transform: uppercase;
+            word-wrap: break-word;
             overflow-wrap: break-word;
         }
         .brand-large span { color: var(--color-fuchsia); }
@@ -197,23 +196,19 @@
         }
         .brand-small { 
             font-family: var(--font-serif); 
-            /* Ajustamos la fuente para que se adapte mejor */
             font-size: clamp(1rem, 3.5vw, 1.4rem);
             font-weight: 700; 
-            
-            /* CORRECCIONES CLAVE: */
-            flex: 1; /* Hace que ocupe todo el espacio disponible entre los botones */
-            max-width: none; /* Eliminamos el límite de ancho que cortaba el texto */
-            white-space: normal; /* Permite que el texto baje a otra línea si es necesario */
-            overflow: visible; /* Muestra todo el contenido */
-            text-overflow: clip; /* Quita los puntos suspensivos (...) */
-            
+            flex: 1;
+            max-width: none;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
             text-align: center;
             margin: 0 auto;
-            line-height: 1.1; /* Espaciado cómodo por si ocupa dos líneas */
-            padding: 0 10px; /* Un pequeño margen para no pegarse a los botones laterales */
+            line-height: 1.1;
+            padding: 0 10px;
         }
-        }
+        
         @media (max-width: 380px) {
             .brand-small { max-width: 150px; font-size: 1.1rem; }
         }
@@ -455,7 +450,7 @@
                     
                     <div id="photo-section">
                         <div class="photo-wrapper">
-                            <img id="preview-img" class="photo-preview" src="https://via.placeholder.com/80?text=Foto">
+                            <img id="preview-img" class="photo-preview" src="https://placehold.co/80x80?text=Foto">
                             
                             <input type="file" id="file-input" accept="image/*" 
                                    style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:10;"
@@ -768,7 +763,7 @@
                     const el = document.createElement('div'); el.className = 'service-card';
                     el.onclick = () => app.selectService(el, srv.name);
                     const priceHtml = srv.price ? `<span class="service-price">${srv.price}</span>` : '';
-                    el.innerHTML = `<img src="${srv.img}" alt="${srv.name}" onerror="this.src='https://via.placeholder.com/300?text=${srv.name}'"><div class="service-overlay"><span class="service-name">${srv.name}</span>${priceHtml}</div>`;
+                    el.innerHTML = `<img src="${srv.img}" alt="${srv.name}" onerror="this.src='https://placehold.co/300?text=${srv.name}'"><div class="service-overlay"><span class="service-name">${srv.name}</span>${priceHtml}</div>`;
                     container.appendChild(el);
                 });
             },
@@ -798,8 +793,6 @@
            async verifyUser(phone) {
                 document.getElementById('phoneSpinner').style.display = 'block';
                 
-                // CORRECCIÓN AQUÍ: Agregamos .eq('codigo_negocio', BUSINESS_CODE)
-                // Usamos .maybeSingle() en lugar de .single() para evitar errores en consola si no existe
                 const { data } = await supabaseClient
                     .from('clientes')
                     .select('*')
@@ -810,15 +803,15 @@
                 document.getElementById('phoneSpinner').style.display = 'none';
                 localStorage.setItem(STORAGE_KEY, phone);
                 this.data.phone = phone;
-               chatApp.startChat(phone);
+                chatApp.startChat(phone);
 
                 if(data) {
-                    // Usuario existe EN ESTE NEGOCIO
+                    // Usuario existe
                     this.data.name = data.nombre; 
                     this.data.surname = data.apellido;
                     this.data.photoUrl = data.foto_url;
                     
-                    chatApp.enable();
+                    chatApp.enable(); // <-- CORRECCIÓN: Ahora esta función existe
                     document.getElementById('welcome-text').innerHTML = `Hola, espero que estés bien.<br>Bienvenida de nuevo, <b>${data.nombre} ${data.apellido}</b>`;
                     document.getElementById('welcome-overlay').style.display = 'flex'; 
                     document.getElementById('actionBar').style.display = 'none';
@@ -827,15 +820,15 @@
                         this.step = 2; this.updateUI();
                     }, 2500);
                 } else {
-                    // Usuario nuevo (o no registrado en este negocio específico)
+                    // Usuario nuevo
                     document.getElementById('new-user-fields').classList.add('visible');
                     document.getElementById('photo-section').style.display = 'flex';
                     document.getElementById('actionBar').style.display = 'block'; 
                     document.getElementById('inputName').focus();
-                    chatApp.enable();
+                    chatApp.enable(); // <-- CORRECCIÓN: Ahora esta función existe
                 }
             },
-            // --- LÓGICA SUBIDA FOTO ---
+            
             async procesarFoto(input) {
                 const file = input.files[0];
                 if (!file) return;
@@ -846,7 +839,6 @@
                 };
                 reader.readAsDataURL(file);
 
-                // Subir a Supabase
                 try {
                     const fileName = `avatars/${this.data.phone}_${Date.now()}.jpg`;
                     const { data, error } = await supabaseClient.storage.from('glow_files').upload(fileName, file);
@@ -859,7 +851,6 @@
 
                 } catch (error) {
                     console.error("Error subiendo foto:", error);
-                    // No bloqueamos, dejamos que siga sin foto
                 }
             },
 
@@ -877,7 +868,6 @@
                 if(this.step === 1) {
                     this.data.phone = document.getElementById('inputPhone').value.trim();
                     const nameField = document.getElementById('inputName');
-                    // Solo validar nombre si los campos de nuevo usuario son visibles
                     if(document.getElementById('new-user-fields').classList.contains('visible')) { 
                         this.data.name = nameField.value.trim();
                         this.data.surname = document.getElementById('inputSurname').value.trim();
@@ -992,17 +982,14 @@
                     const day = String(this.data.date.getDate()).padStart(2, '0');
                     const dateStr = `${year}-${month}-${day}`;
 
-                    // 1. GUARDAR/ACTUALIZAR CLIENTE
-                    // CORRECCIÓN: Agregamos codigo_negocio al objeto
                     await supabaseClient.from('clientes').upsert({
-                        codigo_negocio: BUSINESS_CODE, // <--- IMPORTANTE: Vincula al cliente con este negocio
+                        codigo_negocio: BUSINESS_CODE, 
                         telefono: this.data.phone,
                         nombre: this.data.name,
                         apellido: this.data.surname,
                         foto_url: this.data.photoUrl
-                    }); // Nota: Asegúrate de que tu tabla en Supabase permita duplicar teléfonos si el código de negocio es distinto, o que la llave primaria sea compuesta.
+                    }); 
 
-                    // 2. GUARDAR RESERVA
                     const { error } = await supabaseClient.from('reservas').insert([{
                         codigo_negocio: BUSINESS_CODE,
                         nombre: this.data.name,
@@ -1025,159 +1012,153 @@
             }
         };
 
-       /* --- REEMPLAZA TODO EL BLOQUE chatApp CON ESTO --- */
-const chatApp = {
-    isOpen: false,
-    activePhone: null,
-    realtimeChannel: null,
+        /* --- CHAT APP CORREGIDO Y COMPLETO --- */
+        const chatApp = {
+            isOpen: false,
+            activePhone: null,
+            realtimeChannel: null,
 
-    init() {
-        // Recuperar teléfono de localStorage si existe
-        // Asegúrate de que STORAGE_KEY coincida con la definida al inicio de tu script
-        const savedPhone = localStorage.getItem(STORAGE_KEY); 
-        if (savedPhone) {
-            this.startChat(savedPhone);
-        }
-    },
-
-    startChat(phone) {
-        if(!phone) return;
-        this.activePhone = phone;
-        this.loadHistory();
-        this.subscribe(); 
-        document.getElementById('headerChatBtn').classList.remove('hidden');
-    },
-
-    toggle() {
-        this.isOpen = !this.isOpen;
-        document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
-        if (this.isOpen) {
-            document.getElementById('chatBadge').classList.remove('active');
-            this.scrollToBottom();
-        }
-    },
-
-    handleEnter(e) { if (e.key === 'Enter') this.send(); },
-
-    async loadHistory() {
-        if (!this.activePhone) return;
-
-        const { data } = await supabaseClient
-            .from('mensajes')
-            .select('*')
-            .eq('codigo_negocio', BUSINESS_CODE)
-            .eq('telefono_cliente', this.activePhone)
-            .order('created_at', { ascending: true });
-
-        const container = document.getElementById('chatContainer');
-        container.innerHTML = '';
-
-        if (data && data.length > 0) {
-            data.forEach(m => this.renderMessage(m));
-            this.scrollToBottom();
-        } else {
-            container.innerHTML = '<div style="text-align:center; color:#ccc; margin-top:20px; font-size:0.9rem;" id="emptyMsg">¡Hola! Escríbenos para confirmar tu cita.</div>';
-        }
-    },
-
-    // --- AQUÍ ESTÁ EL ARREGLO DE REALTIME ---
-    subscribe() {
-        if (!this.activePhone) return;
-        
-        // 1. Limpiar canal previo
-        if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
-
-        const channelId = `cliente_room_${this.activePhone}`;
-        console.log("🔌 Cliente: Suscribiendo a", channelId);
-
-        this.realtimeChannel = supabaseClient.channel(channelId)
-            .on(
-                'postgres_changes', 
-                { 
-                    event: 'INSERT', 
-                    schema: 'public', 
-                    table: 'mensajes',
-                    // FILTRO CRÍTICO: Debe ser exacto
-                    filter: `telefono_cliente=eq.${this.activePhone}` 
-                },
-                (payload) => {
-                    // Evitar duplicar el mensaje que acabamos de enviar nosotros mismos
-                    // (Si ya lo mostramos con UI Optimista, no lo repitas)
-                    const m = payload.new;
-                    if (m.emisor === 'admin') { 
-                        // Solo renderizamos si viene del ADMIN.
-                        // Si viene del cliente, ya lo mostramos en send()
-                        this.renderMessage(m);
-                        
-                        if (!this.isOpen) {
-                            document.getElementById('chatBadge').classList.add('active');
-                            if(navigator.vibrate) navigator.vibrate(200);
-                        }
-                    }
+            init() {
+                const savedPhone = localStorage.getItem(STORAGE_KEY); 
+                if (savedPhone) {
+                    this.startChat(savedPhone);
                 }
-            )
-            .subscribe((status) => console.log("Estado Socket Cliente:", status));
-    },
+            },
 
-    renderMessage(msg) {
-        const container = document.getElementById('chatContainer');
-        // Quitar mensaje de vacío si existe
-        const empty = document.getElementById('emptyMsg');
-        if(empty) empty.remove();
+            // CORRECCIÓN PRINCIPAL: Se agrega la función 'enable' que faltaba
+            enable() {
+                document.getElementById('headerChatBtn').classList.remove('hidden');
+            },
 
-        const div = document.createElement('div');
-        div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
-        div.textContent = msg.contenido;
+            startChat(phone) {
+                if(!phone) return;
+                this.activePhone = phone;
+                this.loadHistory();
+                this.subscribe(); 
+                this.enable(); // Nos aseguramos de habilitarlo también aquí
+            },
 
-        const time = new Date(msg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        div.innerHTML += `<span style="display:block; font-size:0.65rem; opacity:0.7; text-align:right; margin-top:4px;">${time}</span>`;
-        
-        container.appendChild(div);
-        this.scrollToBottom();
-    },
+            toggle() {
+                this.isOpen = !this.isOpen;
+                document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
+                if (this.isOpen) {
+                    document.getElementById('chatBadge').classList.remove('active');
+                    this.scrollToBottom();
+                }
+            },
 
-    // --- AQUÍ ESTÁ EL ARREGLO DEL ENVÍO (UI OPTIMISTA) ---
-    async send() {
-        const input = document.getElementById('chatInput');
-        const txt = input.value.trim();
-        if (!txt) return;
-        if (!this.activePhone) return alert("Error: No hay teléfono registrado.");
+            handleEnter(e) { if (e.key === 'Enter') this.send(); },
 
-        // 1. UI OPTIMISTA: ¡Muéstralo YA! No esperes a Supabase.
-        const fakeMsg = {
-            contenido: txt,
-            emisor: 'cliente',
-            created_at: new Date().toISOString()
+            async loadHistory() {
+                if (!this.activePhone) return;
+
+                const { data } = await supabaseClient
+                    .from('mensajes')
+                    .select('*')
+                    .eq('codigo_negocio', BUSINESS_CODE)
+                    .eq('telefono_cliente', this.activePhone)
+                    .order('created_at', { ascending: true });
+
+                const container = document.getElementById('chatContainer');
+                container.innerHTML = '';
+
+                if (data && data.length > 0) {
+                    data.forEach(m => this.renderMessage(m));
+                    this.scrollToBottom();
+                } else {
+                    container.innerHTML = '<div style="text-align:center; color:#ccc; margin-top:20px; font-size:0.9rem;" id="emptyMsg">¡Hola! Escríbenos para confirmar tu cita.</div>';
+                }
+            },
+
+            subscribe() {
+                if (!this.activePhone) return;
+                
+                // Limpieza de canal anterior para evitar conflictos de socket
+                if (this.realtimeChannel) {
+                    supabaseClient.removeChannel(this.realtimeChannel);
+                    this.realtimeChannel = null;
+                }
+
+                const channelId = `cliente_room_${this.activePhone}`;
+                console.log("🔌 Cliente: Suscribiendo a", channelId);
+
+                this.realtimeChannel = supabaseClient.channel(channelId)
+                    .on(
+                        'postgres_changes', 
+                        { 
+                            event: 'INSERT', 
+                            schema: 'public', 
+                            table: 'mensajes',
+                            filter: `telefono_cliente=eq.${this.activePhone}` 
+                        },
+                        (payload) => {
+                            const m = payload.new;
+                            if (m.emisor === 'admin') { 
+                                this.renderMessage(m);
+                                if (!this.isOpen) {
+                                    document.getElementById('chatBadge').classList.add('active');
+                                    if(navigator.vibrate) navigator.vibrate(200);
+                                }
+                            }
+                        }
+                    )
+                    .subscribe((status) => {
+                        console.log("Estado Socket Cliente:", status);
+                    });
+            },
+
+            renderMessage(msg) {
+                const container = document.getElementById('chatContainer');
+                const empty = document.getElementById('emptyMsg');
+                if(empty) empty.remove();
+
+                const div = document.createElement('div');
+                div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
+                div.textContent = msg.contenido;
+
+                const time = new Date(msg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                div.innerHTML += `<span style="display:block; font-size:0.65rem; opacity:0.7; text-align:right; margin-top:4px;">${time}</span>`;
+                
+                container.appendChild(div);
+                this.scrollToBottom();
+            },
+
+            async send() {
+                const input = document.getElementById('chatInput');
+                const txt = input.value.trim();
+                if (!txt) return;
+                if (!this.activePhone) return alert("Error: No hay teléfono registrado.");
+
+                const fakeMsg = {
+                    contenido: txt,
+                    emisor: 'cliente',
+                    created_at: new Date().toISOString()
+                };
+                this.renderMessage(fakeMsg); 
+                this.scrollToBottom();
+                
+                input.value = '';
+
+                const { error } = await supabaseClient.from('mensajes').insert([{
+                    codigo_negocio: BUSINESS_CODE,
+                    telefono_cliente: this.activePhone,
+                    emisor: 'cliente',
+                    contenido: txt,
+                    leido: false
+                }]);
+
+                if (error) {
+                    console.error("Error enviando:", error);
+                    alert("Error de conexión. El mensaje tal vez no se guardó.");
+                }
+            },
+
+            scrollToBottom() {
+                const c = document.getElementById('chatContainer');
+                setTimeout(() => c.scrollTop = c.scrollHeight, 50);
+            }
         };
-        this.renderMessage(fakeMsg); // <-- ¡Aparece al instante!
-        this.scrollToBottom();
         
-        // 2. Limpiar input
-        input.value = '';
-
-        // 3. Enviar a DB en segundo plano
-        const { error } = await supabaseClient.from('mensajes').insert([{
-            codigo_negocio: BUSINESS_CODE,
-            telefono_cliente: this.activePhone,
-            emisor: 'cliente',
-            contenido: txt,
-            leido: false
-        }]);
-
-        if (error) {
-            console.error("Error enviando:", error);
-            // Opcional: Mostrar alerta si falló
-            alert("Error de conexión. El mensaje tal vez no se guardó.");
-        }
-    },
-
-    scrollToBottom() {
-        const c = document.getElementById('chatContainer');
-        setTimeout(() => c.scrollTop = c.scrollHeight, 50);
-    }
-};
-        
-        // Estilos para la animación de sacudida
         const styleSheet = document.createElement("style");
         styleSheet.innerText = `
             @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
@@ -1187,10 +1168,3 @@ const chatApp = {
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
