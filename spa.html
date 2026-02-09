@@ -586,12 +586,13 @@ async function subscribeUserToPush(telefono) {
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
         });
 
+        const subJson = subscription.toJSON();
+
         // 4. Guardamos en Supabase en el cliente actual
         // IMPORTANTE: BUSINESS_CODE debe estar definido globalmente en tu script
         await supabaseClient
             .from('clientes')
-            .update({ push_subscription: subscription })
-            .eq('telefono', telefono)
+            .update({ push_subscription: subJson }) // Guardamos el JSON serializado            .eq('telefono', telefono)
             .eq('codigo_negocio', BUSINESS_CODE);
             
         console.log("🔔 Notificaciones activadas para el cliente");
@@ -1216,4 +1217,5 @@ async function subscribeUserToPush(telefono) {
     </script>
 </body>
 </html>
+
 
