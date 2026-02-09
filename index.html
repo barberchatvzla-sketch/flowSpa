@@ -368,6 +368,28 @@
         #dateModal {
             backdrop-filter: blur(5px);
         }
+
+
+        /* Estados del botón de notificaciones */
+.icon-btn.warning { color: orange !important; }
+.icon-btn.error { color: #FF3B30 !important; }
+.icon-btn.disabled { opacity: 0.5; cursor: not-allowed !important; }
+
+/* Tooltip para el botón */
+.icon-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    z-index: 10000;
+}
     </style>
 </head>
 <body>
@@ -1506,4 +1528,5 @@ const pushService = {
     </script>
 </body>
 </html>
+
 
