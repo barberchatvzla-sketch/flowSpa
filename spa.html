@@ -1085,46 +1085,45 @@ const chatApp = {
     },
 
     // --- AQUÍ ESTABA EL ERROR ---
-    subscribe() {
+  subscribe() {
         if (!this.activePhone) return;
 
-        // CORRECCIÓN: No uses removeAllChannels().
-        // Si ya existe un canal suscrito, lo desuscribimos específicamente a él.
-        if (this.realtimeChannel) {
-            supabaseClient.removeChannel(this.realtimeChannel);
-            this.realtimeChannel = null;
-        }
+        // Limpiar canal anterior
+        if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
 
-        // Creamos una referencia única para este canal
-        const channelName = `chat_cliente_${this.activePhone}_${BUSINESS_CODE}`;
+        // Canal único por cliente
+        const channelName = `client_chat_${this.activePhone}`;
+        console.log("🔌 Cliente: Conectando Chat Realtime...", channelName);
 
         this.realtimeChannel = supabaseClient.channel(channelName)
-            .on('postgres_changes', {
-                    event: 'INSERT',
-                    schema: 'public',
+            .on(
+                'postgres_changes', 
+                { 
+                    event: 'INSERT', 
+                    schema: 'public', 
                     table: 'mensajes',
-                    filter: `telefono_cliente=eq.${this.activePhone}`
+                    filter: `telefono_cliente=eq.${this.activePhone}` // Filtro estricto
                 },
-                payload => {
-                    // Validar negocio
+                (payload) => {
+                    console.log('📨 Cliente (Realtime):', payload.new);
+                    // Solo mensajes de este negocio
                     if (payload.new.codigo_negocio === BUSINESS_CODE) {
+                        
+                        // Limpiar mensaje "No hay mensajes"
                         const container = document.getElementById('chatContainer');
                         if (container.innerText.includes('No hay mensajes')) container.innerHTML = '';
 
                         this.renderMessage(payload.new);
 
+                        // Si chat cerrado y mensaje es de admin -> Notificar visualmente
                         if (!this.isOpen && payload.new.emisor === 'admin') {
                             document.getElementById('chatBadge').classList.add('active');
+                            if(navigator.vibrate) navigator.vibrate(200);
                         }
                     }
-                })
-            .subscribe((status) => {
-                console.log("Estado Chat Realtime:", status);
-                // Si falla por Timeout, reintentar suavemente en 5 segs
-                if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
-                    setTimeout(() => this.subscribe(), 5000);
                 }
-            });
+            )
+            .subscribe((status) => console.log("Client Chat Status:", status));
     },
 
     renderMessage(msg) {
@@ -1182,6 +1181,7 @@ const chatApp = {
     </script>
 </body>
 </html>
+
 
 
 
