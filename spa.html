@@ -553,6 +553,54 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHpraHV2ZnN0bW1sam96cGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NjQzMzksImV4cCI6MjA4NDM0MDMzOX0.uWRs0xB68ltUVEJPICFuS9vYCmDN06KTUfgbS_4W9WU';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+
+        // --- NOTIFICACIONES CONFIG ---
+const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// Función principal para activar
+async function subscribeUserToPush(telefono) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    try {
+        // 1. Registramos el SW específico del CLIENTE
+        const register = await navigator.serviceWorker.register('/sw-client.js');
+        
+        // 2. Pedimos permiso (El navegador mostrará el prompt aquí)
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        // 3. Obtenemos el token de suscripción
+        const subscription = await register.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+
+        // 4. Guardamos en Supabase en el cliente actual
+        // IMPORTANTE: BUSINESS_CODE debe estar definido globalmente en tu script
+        await supabaseClient
+            .from('clientes')
+            .update({ push_subscription: subscription })
+            .eq('telefono', telefono)
+            .eq('codigo_negocio', BUSINESS_CODE);
+            
+        console.log("🔔 Notificaciones activadas para el cliente");
+
+    } catch (err) {
+        console.error("Error activando notificaciones:", err);
+    }
+}
+
         // --- 2. OBTENER CÓDIGO DE NEGOCIO ---
         let rawRef = window.NEGOCIO_ID_SERVER;
         if (!rawRef) {
@@ -1168,3 +1216,4 @@
     </script>
 </body>
 </html>
+
