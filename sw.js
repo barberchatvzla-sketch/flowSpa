@@ -46,46 +46,48 @@ self.addEventListener('fetch', (event) => {
 });
 
 // --- 4. PUSH NOTIFICATION (Lógica mejorada) ---
+// EN TU ARCHIVO sw.js
+
 self.addEventListener('push', function(event) {
     let data = {};
-    try {
-        data = event.data.json();
-    } catch (e) {
-        console.error('Error parseando push data', e);
-        return;
+    if (event.data) {
+        try { data = event.data.json(); } catch(e) { console.error('Error parse JSON push', e); }
     }
 
-    // A. ENVIAR A CLIENTE (Para actualizar la UI en tiempo real)
-    const updateClientsPromise = self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(clientList => {
-            clientList.forEach(client => {
-                client.postMessage({
-                    action: 'UPDATE_DATOS', 
-                    tipo: data.type,   // 'mensajes' o 'reservas'
-                    payload: data.data // El registro completo
-                });
-            });
-        });
-
-    // B. MOSTRAR NOTIFICACIÓN VISUAL
-    const title = data.title || 'Glow Admin';
+    const title = data.title || 'Glow App';
     const options = {
-        body: data.message || 'Tienes una nueva notificación',
-        icon: data.image || GLOW_ICON_DEFAULT, // Usa la foto del cliente si Pipedream la envió
+        body: data.message || 'Nueva actividad',
+        icon: data.image || GLOW_ICON_DEFAULT, // Usa la foto que mandó Pipedream
         badge: GLOW_BADGE,
         vibrate: [100, 50, 100],
-        data: { url: '/index.html' }, // Guardamos la URL para el click
-        tag: data.type === 'mensajes' ? 'msg-group' : 'booking-group', // Agrupar por tipo
-        renotify: true,
-        actions: [
-            { action: 'open', title: 'Ver ahora' }
-        ]
+        data: { 
+            url: '/index.html',
+            payload: data.data, // El registro completo de la base de datos
+            type: data.type     // 'mensajes' o 'reservas'
+        },
+        tag: 'glow-notification',
+        renotify: true
     };
 
+    // 1. Mostrar la notificación visual (Lo que ya hacías)
     const showNotificationPromise = self.registration.showNotification(title, options);
 
-    // Ejecutar ambas cosas en paralelo (más rápido y seguro)
-    event.waitUntil(Promise.all([updateClientsPromise, showNotificationPromise]));
+    // 2. NUEVO: Enviar mensaje a la página abierta (index.html o spa.html)
+    const sendToClientPromise = self.clients.matchAll({
+        type: 'window', 
+        includeUncontrolled: true
+    }).then((clientList) => {
+        for (const client of clientList) {
+            // Le enviamos los datos a la pestaña
+            client.postMessage({
+                action: 'NUEVA_DATA_PUSH',
+                tipo: data.type,
+                record: data.data // El registro de supabase que vino por Pipedream
+            });
+        }
+    });
+
+    event.waitUntil(Promise.all([showNotificationPromise, sendToClientPromise]));
 });
 
 // --- 5. NOTIFICATION CLICK ---
@@ -111,3 +113,4 @@ self.addEventListener('notificationclick', function(event) {
         })
     );
 });
+
