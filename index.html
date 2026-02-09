@@ -651,42 +651,61 @@
             currentConfig: {...DEMO_CONFIG},
             realtimeChannel: null, 
             
-            async init() {
-                const storedCode = localStorage.getItem('glowAdminCode');
-                
-                if(storedCode) {
-                   console.log("Sesión encontrada:", storedCode);
-                   this.code = storedCode;
-                   
-                   document.getElementById('login-screen').style.display = 'none';
-                   document.getElementById('dashboard').style.display = 'flex';
-                   document.getElementById('dashCodeDisplay').textContent = this.code;
+        async init() {
+    const storedCode = localStorage.getItem('glowAdminCode');
+    
+    if(storedCode) {
+       console.log("✅ Sesión encontrada:", storedCode);
+       this.code = storedCode;
+       
+       // Mostrar dashboard inmediatamente
+       document.getElementById('login-screen').style.display = 'none';
+       document.getElementById('dashboard').style.display = 'flex';
+       document.getElementById('dashCodeDisplay').textContent = this.code;
 
-                   try {
-                       const { data } = await supabaseClient
-                           .from('negocios')
-                           .select('*')
-                           .eq('codigo_negocio', this.code)
-                           .single();
+       try {
+           // 1. Cargar configuración del negocio
+           const { data } = await supabaseClient
+               .from('negocios')
+               .select('*')
+               .eq('codigo_negocio', this.code)
+               .single();
 
-                       if (data) {
-                           this.currentConfig = {
-                                nombre_salon: data.nombre_salon || DEMO_CONFIG.nombre_salon,
-                                nombre_encargada: data.nombre_encargada || DEMO_CONFIG.nombre_encargada,
-                                imagen_portada: data.imagen_portada || DEMO_CONFIG.imagen_portada,
-                                logo_salon: data.logo_salon || DEMO_CONFIG.logo_salon,
-                                servicios: data.servicios || DEMO_CONFIG.servicios,
-                                theme_color: data.theme_color || DEMO_CONFIG.theme_color
-                           };
-                           this.applyTheme(this.currentConfig.theme_color);
-                           this.renderConfigForm();
-                       }
-                   } catch (e) { console.error("Error cargando config al inicio", e); }
+           if (data) {
+               this.currentConfig = {
+                    nombre_salon: data.nombre_salon || DEMO_CONFIG.nombre_salon,
+                    nombre_encargada: data.nombre_encargada || DEMO_CONFIG.nombre_encargada,
+                    imagen_portada: data.imagen_portada || DEMO_CONFIG.imagen_portada,
+                    logo_salon: data.logo_salon || DEMO_CONFIG.logo_salon,
+                    servicios: data.servicios || DEMO_CONFIG.servicios,
+                    theme_color: data.theme_color || DEMO_CONFIG.theme_color
+               };
+               this.applyTheme(this.currentConfig.theme_color);
+               this.renderConfigForm();
+           }
+       } catch (e) { 
+           console.error("❌ Error cargando config al inicio", e); 
+       }
 
-                   this.loadData();
-                   pushService.init();
-                }
-            },
+       // 2. Cargar datos de reservas
+       this.loadData();
+       
+       // 3. Inicializar Service Worker (pero NO habilitar notificaciones aún)
+       setTimeout(async () => {
+           try {
+               await pushService.init();
+               
+               // 4. Después de inicializar, verificar estado de suscripción
+               const state = await pushService.checkCurrentSubscription();
+               pushService.updateButtonState(state);
+               
+           } catch (error) {
+               console.error("❌ Error inicializando push service:", error);
+               pushService.updateButtonState('error');
+           }
+       }, 1000); // Retardo para asegurar que todo esté cargado
+    }
+},
 
             async login() {
                 const codeInput = document.getElementById('businessCodeInput');
@@ -1255,67 +1274,200 @@
 
         const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
 
-        const pushService = {
-            btn: document.getElementById('btn-notif-status'),
-            swRegistration: null,
+        const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
+
+const pushService = {
+    btn: document.getElementById('btn-notif-status'),
+    swRegistration: null,
+    isInitialized: false,
+    
+    async init() {
+        // 1. Verificar soporte del navegador
+        if (!('serviceWorker' in navigator)) {
+            console.warn('⚠️ Service Worker no soportado');
+            this.updateButtonState('unsupported');
+            return;
+        }
+        
+        // 2. Verificar si estamos en HTTPS o localhost
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            console.warn('⚠️ Service Worker requiere HTTPS o localhost');
+            this.updateButtonState('https-required');
+            return;
+        }
+        
+        try {
+            console.log('🔄 Registrando Service Worker...');
             
-            async init() {
-                if ('serviceWorker' in navigator) {
-                    try {
-                        this.swRegistration = await navigator.serviceWorker.register('sw.js');
-                        console.log('SW Registrado para PWA');
-                        this.updateBtnUI();
-                    } catch (error) {
-                        console.error('SW Error:', error);
+            // 3. Registrar el Service Worker
+            this.swRegistration = await navigator.serviceWorker.register('sw.js', {
+                scope: './',
+                updateViaCache: 'none'
+            });
+            
+            console.log('✅ Service Worker registrado:', this.swRegistration);
+            
+            // 4. Esperar a que el Service Worker esté activo
+            if (this.swRegistration.installing) {
+                console.log('⏳ Service Worker instalando...');
+                await new Promise(resolve => {
+                    this.swRegistration.installing.addEventListener('statechange', () => {
+                        if (this.swRegistration.installing.state === 'activated') {
+                            console.log('✅ Service Worker activado');
+                            resolve();
+                        }
+                    });
+                });
+            } else if (this.swRegistration.waiting) {
+                await this.swRegistration.update();
+            }
+            
+            // 5. Verificar si ya hay una suscripción activa
+            await this.updateButtonState('checking');
+            
+            this.isInitialized = true;
+            console.log('✅ PushService inicializado correctamente');
+            
+        } catch (error) {
+            console.error('❌ Error registrando Service Worker:', error);
+            this.updateButtonState('error');
+        }
+    },
+
+    async enable() {
+        console.log('🔔 Activando notificaciones...');
+        
+        // 1. Verificar que esté inicializado
+        if (!this.isInitialized || !this.swRegistration) {
+            console.error('❌ PushService no inicializado');
+            alert('Por favor, recarga la página e intenta nuevamente.');
+            await this.init();
+            return;
+        }
+        
+        // 2. Pedir permiso
+        const permission = await Notification.requestPermission();
+        console.log('📋 Permiso de notificaciones:', permission);
+        
+        if (permission !== 'granted') {
+            alert('❌ Se necesitan permisos para recibir notificaciones.');
+            return;
+        }
+        
+        if (!admin.code) {
+            alert('❌ Necesitas iniciar sesión primero.');
+            return;
+        }
+
+        try {
+            console.log('📡 Suscribiendo a Push Notifications...');
+            
+            // 3. Crear suscripción
+            const subscription = await this.swRegistration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+
+            // 4. Convertir a JSON para enviar a Supabase
+            const subJson = subscription.toJSON();
+            console.log('📦 Suscripción creada:', subJson);
+
+            // 5. Guardar en Supabase
+            const { error } = await supabaseClient
+                .from('admin_subscriptions')
+                .upsert({
+                    codigo_negocio: admin.code,
+                    subscription: subJson,
+                    updated_at: new Date().toISOString()
+                }, { 
+                    onConflict: 'codigo_negocio' 
+                });
+
+            if (error) throw error;
+
+            // 6. Actualizar UI
+            notifications.show('✅ Notificaciones Activadas', 'Recibirás alertas en tiempo real.');
+            this.updateButtonState('active');
+            
+            console.log('🎉 Notificaciones activadas exitosamente');
+
+        } catch (error) {
+            console.error('❌ Error activando notificaciones:', error);
+            alert('Error: ' + error.message);
+            this.updateButtonState('error');
+        }
+    },
+
+    async updateButtonState(state) {
+        const iconMap = {
+            'unsupported': { icon: 'ph-warning', color: '#ccc', text: 'No soportado' },
+            'https-required': { icon: 'ph-warning', color: 'orange', text: 'Requiere HTTPS' },
+            'error': { icon: 'ph-warning-circle', color: '#FF3B30', text: 'Error' },
+            'checking': { icon: 'ph-hourglass', color: '#8E8E93', text: 'Verificando...' },
+            'inactive': { icon: 'ph-bell', color: 'var(--ios-text)', text: 'Activar' },
+            'active': { icon: 'ph-bell-ringing', color: 'var(--ios-accent)', text: 'Activadas' }
+        };
+        
+        const config = iconMap[state] || iconMap.inactive;
+        
+        this.btn.innerHTML = `<i class="ph ${config.icon}"></i>`;
+        this.btn.style.color = config.color;
+        
+        if (state === 'active') {
+            this.btn.classList.add('active');
+            this.btn.onclick = null;
+            this.btn.title = 'Notificaciones activadas';
+        } else if (state === 'inactive') {
+            this.btn.classList.remove('active');
+            this.btn.onclick = () => this.enable();
+            this.btn.title = 'Activar notificaciones';
+        } else {
+            this.btn.classList.remove('active');
+            this.btn.onclick = () => {
+                alert(`Estado: ${config.text}. ${state === 'unsupported' ? 'Tu navegador no soporta notificaciones.' : ''}`);
+            };
+            this.btn.title = config.text;
+        }
+    },
+
+    async checkCurrentSubscription() {
+        if (!this.swRegistration) return 'inactive';
+        
+        try {
+            const subscription = await this.swRegistration.pushManager.getSubscription();
+            
+            if (subscription) {
+                // Verificar si la suscripción está guardada en Supabase
+                if (admin.code) {
+                    const { data } = await supabaseClient
+                        .from('admin_subscriptions')
+                        .select('*')
+                        .eq('codigo_negocio', admin.code)
+                        .single();
+                    
+                    if (data) {
+                        return 'active';
                     }
                 }
-            },
-
-            async enable() {
-                const permission = await Notification.requestPermission();
-                if (permission !== 'granted') return alert('Permiso denegado.');
-                if(!admin.code) return alert('Ingresa tu código primero.');
-
-                try {
-                    const subscription = await this.swRegistration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                    });
-
-                    // --- SOLUCIÓN: Convertir a JSON explícito ---
-                    const subJson = subscription.toJSON();
-
-                    await supabaseClient.from('admin_subscriptions').insert({
-                            codigo_negocio: admin.code,
-                            subscription: subJson // Enviamos el JSON serializado
-                        });
-                    
-                    notifications.show('Notificaciones Activadas', 'Recibirás alertas aquí.');
-                    this.updateBtnUI();
-
-                } catch (e) { console.error(e); }
-            },
-
-            async updateBtnUI() {
-                if(!this.swRegistration) return;
-                const subscription = await this.swRegistration.pushManager.getSubscription();
-                if (subscription) {
-                    this.btn.classList.add('active');
-                    this.btn.onclick = null;
-                } else {
-                    this.btn.classList.remove('active');
-                    this.btn.onclick = () => this.enable();
-                }
-            },
-            urlBase64ToUint8Array(base64String) {
-                const padding = '='.repeat((4 - base64String.length % 4) % 4);
-                const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-                const rawData = window.atob(base64);
-                const outputArray = new Uint8Array(rawData.length);
-                for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-                return outputArray;
             }
-        };
+            return 'inactive';
+        } catch (error) {
+            console.error('❌ Error verificando suscripción:', error);
+            return 'error';
+        }
+    },
+
+    urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+};
 
         admin.init();
 
@@ -1354,3 +1506,4 @@
     </script>
 </body>
 </html>
+
