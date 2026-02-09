@@ -1214,8 +1214,65 @@ async function subscribeUserToPush(telefono) {
         `;
         document.head.appendChild(styleSheet);
 
+        // --- PEGAR ESTO AL FINAL DE TU SCRIPT EN SPA.HTML ---
+
+// 1. Función para convertir la clave pública (No toques esto, es matemática necesaria)
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// 2. Función para pedir permiso y guardar la suscripción
+async function subscribeUserToPush(telefono) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log("Push no soportado en este navegador");
+        return;
+    }
+
+    try {
+        // Pedimos permiso al usuario (Saldrá la ventanita de "Permitir notificaciones")
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        // Registramos el Service Worker
+        const registration = await navigator.serviceWorker.register('/sw-client.js');
+        
+        // Esperamos a que esté listo
+        await navigator.serviceWorker.ready;
+
+        // Nos suscribimos
+        const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
+        const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+        });
+
+        // Guardamos la suscripción en Supabase asociada al teléfono
+        const { error } = await supabaseClient
+            .from('clientes')
+            .update({ push_subscription: JSON.stringify(subscription) })
+            .eq('telefono', telefono)
+            .eq('codigo_negocio', window.BUSINESS_CODE); // Asegúrate que BUSINESS_CODE esté definido arriba
+
+        if (error) console.error("Error guardando suscripción:", error);
+        else console.log("✅ Cliente suscrito a notificaciones!");
+
+    } catch (err) {
+        console.error("Error en proceso Push:", err);
+    }
+}
+
     </script>
 </body>
 </html>
+
 
 
