@@ -1029,22 +1029,22 @@
 const chatApp = {
     isOpen: false,
     activePhone: null,
-    realtimeChannel: null, // <--- NUEVO: Guardamos referencia al canal actual
+    realtimeChannel: null,
 
     init() {
-        if (app.data.phone) {
-            this.startChat(app.data.phone);
+        // Recuperar teléfono de localStorage si existe
+        // Asegúrate de que STORAGE_KEY coincida con la definida al inicio de tu script
+        const savedPhone = localStorage.getItem(STORAGE_KEY); 
+        if (savedPhone) {
+            this.startChat(savedPhone);
         }
     },
 
     startChat(phone) {
+        if(!phone) return;
         this.activePhone = phone;
         this.loadHistory();
-        this.subscribe(); // Escuchar mensajes nuevos
-        document.getElementById('headerChatBtn').classList.remove('hidden');
-    },
-
-    enable() {
+        this.subscribe(); 
         document.getElementById('headerChatBtn').classList.remove('hidden');
     },
 
@@ -1054,17 +1054,15 @@ const chatApp = {
         if (this.isOpen) {
             document.getElementById('chatBadge').classList.remove('active');
             this.scrollToBottom();
-            // Recargamos historial por seguridad al abrir
-            if (this.activePhone) this.loadHistory();
         }
     },
 
     handleEnter(e) { if (e.key === 'Enter') this.send(); },
 
     async loadHistory() {
-        if (!this.activePhone || !BUSINESS_CODE) return;
+        if (!this.activePhone) return;
 
-        const { data, error } = await supabaseClient
+        const { data } = await supabaseClient
             .from('mensajes')
             .select('*')
             .eq('codigo_negocio', BUSINESS_CODE)
@@ -1074,86 +1072,90 @@ const chatApp = {
         const container = document.getElementById('chatContainer');
         container.innerHTML = '';
 
-        if (error) console.error("Error cargando chat:", error);
-
         if (data && data.length > 0) {
             data.forEach(m => this.renderMessage(m));
             this.scrollToBottom();
         } else {
-            container.innerHTML = '<div style="text-align:center; color:#ccc; margin-top:20px; font-size:0.9rem;">No hay mensajes aún.<br>¡Escríbenos!</div>';
+            container.innerHTML = '<div style="text-align:center; color:#ccc; margin-top:20px; font-size:0.9rem;" id="emptyMsg">¡Hola! Escríbenos para confirmar tu cita.</div>';
         }
     },
 
-    // --- AQUÍ ESTABA EL ERROR ---
-  subscribe() {
+    // --- AQUÍ ESTÁ EL ARREGLO DE REALTIME ---
+    subscribe() {
         if (!this.activePhone) return;
-
-        // Limpiar canal anterior
+        
+        // 1. Limpiar canal previo
         if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
 
-        // Canal único por cliente
-        const channelName = `client_chat_${this.activePhone}`;
-        console.log("🔌 Cliente: Conectando Chat Realtime...", channelName);
+        const channelId = `cliente_room_${this.activePhone}`;
+        console.log("🔌 Cliente: Suscribiendo a", channelId);
 
-        this.realtimeChannel = supabaseClient.channel(channelName)
+        this.realtimeChannel = supabaseClient.channel(channelId)
             .on(
                 'postgres_changes', 
                 { 
                     event: 'INSERT', 
                     schema: 'public', 
                     table: 'mensajes',
-                    filter: `telefono_cliente=eq.${this.activePhone}` // Filtro estricto
+                    // FILTRO CRÍTICO: Debe ser exacto
+                    filter: `telefono_cliente=eq.${this.activePhone}` 
                 },
                 (payload) => {
-                    console.log('📨 Cliente (Realtime):', payload.new);
-                    // Solo mensajes de este negocio
-                    if (payload.new.codigo_negocio === BUSINESS_CODE) {
+                    // Evitar duplicar el mensaje que acabamos de enviar nosotros mismos
+                    // (Si ya lo mostramos con UI Optimista, no lo repitas)
+                    const m = payload.new;
+                    if (m.emisor === 'admin') { 
+                        // Solo renderizamos si viene del ADMIN.
+                        // Si viene del cliente, ya lo mostramos en send()
+                        this.renderMessage(m);
                         
-                        // Limpiar mensaje "No hay mensajes"
-                        const container = document.getElementById('chatContainer');
-                        if (container.innerText.includes('No hay mensajes')) container.innerHTML = '';
-
-                        this.renderMessage(payload.new);
-
-                        // Si chat cerrado y mensaje es de admin -> Notificar visualmente
-                        if (!this.isOpen && payload.new.emisor === 'admin') {
+                        if (!this.isOpen) {
                             document.getElementById('chatBadge').classList.add('active');
                             if(navigator.vibrate) navigator.vibrate(200);
                         }
                     }
                 }
             )
-            .subscribe((status) => console.log("Client Chat Status:", status));
+            .subscribe((status) => console.log("Estado Socket Cliente:", status));
     },
 
     renderMessage(msg) {
         const container = document.getElementById('chatContainer');
+        // Quitar mensaje de vacío si existe
+        const empty = document.getElementById('emptyMsg');
+        if(empty) empty.remove();
+
         const div = document.createElement('div');
         div.className = `msg ${msg.emisor === 'cliente' ? 'me' : 'admin'}`;
         div.textContent = msg.contenido;
 
-        const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const timeSpan = document.createElement('span');
-        timeSpan.style.fontSize = '0.65rem';
-        timeSpan.style.opacity = '0.7';
-        timeSpan.style.display = 'block';
-        timeSpan.style.textAlign = 'right';
-        timeSpan.style.marginTop = '4px';
-        timeSpan.innerText = time;
-        div.appendChild(timeSpan);
-
+        const time = new Date(msg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        div.innerHTML += `<span style="display:block; font-size:0.65rem; opacity:0.7; text-align:right; margin-top:4px;">${time}</span>`;
+        
         container.appendChild(div);
         this.scrollToBottom();
     },
 
+    // --- AQUÍ ESTÁ EL ARREGLO DEL ENVÍO (UI OPTIMISTA) ---
     async send() {
         const input = document.getElementById('chatInput');
         const txt = input.value.trim();
         if (!txt) return;
-        if (!this.activePhone) return alert("Completa el registro primero.");
+        if (!this.activePhone) return alert("Error: No hay teléfono registrado.");
 
+        // 1. UI OPTIMISTA: ¡Muéstralo YA! No esperes a Supabase.
+        const fakeMsg = {
+            contenido: txt,
+            emisor: 'cliente',
+            created_at: new Date().toISOString()
+        };
+        this.renderMessage(fakeMsg); // <-- ¡Aparece al instante!
+        this.scrollToBottom();
+        
+        // 2. Limpiar input
         input.value = '';
 
+        // 3. Enviar a DB en segundo plano
         const { error } = await supabaseClient.from('mensajes').insert([{
             codigo_negocio: BUSINESS_CODE,
             telefono_cliente: this.activePhone,
@@ -1162,12 +1164,16 @@ const chatApp = {
             leido: false
         }]);
 
-        if (error) alert("Error al enviar: " + error.message);
+        if (error) {
+            console.error("Error enviando:", error);
+            // Opcional: Mostrar alerta si falló
+            alert("Error de conexión. El mensaje tal vez no se guardó.");
+        }
     },
 
     scrollToBottom() {
         const c = document.getElementById('chatContainer');
-        setTimeout(() => c.scrollTop = c.scrollHeight, 100);
+        setTimeout(() => c.scrollTop = c.scrollHeight, 50);
     }
 };
         
@@ -1181,6 +1187,7 @@ const chatApp = {
     </script>
 </body>
 </html>
+
 
 
 
