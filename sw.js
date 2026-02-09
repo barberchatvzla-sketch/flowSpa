@@ -1,4 +1,4 @@
-const CACHE_NAME = 'glow-admin-v4'; // Versión actualizada
+const CACHE_NAME = 'glow-admin-v5'; // Incrementa versión
 const ASSETS_TO_CACHE = [
   '/index.html',
   'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap',
@@ -11,21 +11,15 @@ const GLOW_BADGE = 'https://i.ibb.co/sd4ygWGr/Glow-20260112-165349-0000.png';
 
 // 1. INSTALL
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE)));
   self.skipWaiting();
 });
 
 // 2. ACTIVATE
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.map((key) => {
-        if (key !== CACHE_NAME) return caches.delete(key);
-      })
-    ))
-  );
+  event.waitUntil(caches.keys().then((keys) => Promise.all(
+    keys.map((key) => { if (key !== CACHE_NAME) return caches.delete(key); })
+  )));
   self.clients.claim();
 });
 
@@ -39,50 +33,45 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
         return res;
       })
-      .catch(() => caches.match(event.request).then((cached) => {
-        return cached || new Response('Offline', { status: 404 });
-      }))
+      .catch(() => caches.match(event.request).then((cached) => cached || new Response('Offline', { status: 404 })))
   );
 });
 
-// --- 4. PUSH NOTIFICATION (Lógica mejorada) ---
-// EN TU ARCHIVO sw.js
-
+// --- 4. PUSH NOTIFICATION (CORREGIDO PARA PIPEDREAM) ---
 self.addEventListener('push', function(event) {
-    let data = {};
+    let payload = {};
     if (event.data) {
-        try { data = event.data.json(); } catch(e) { console.error('Error parse JSON push', e); }
+        try { payload = event.data.json(); } catch(e) { console.error('Error parse JSON push', e); }
     }
 
-    const title = data.title || 'Glow App';
+    const title = payload.title || 'Glow App';
     const options = {
-        body: data.message || 'Nueva actividad',
-        icon: data.image || GLOW_ICON_DEFAULT, // Usa la foto que mandó Pipedream
+        body: payload.message || 'Nueva actividad',
+        icon: payload.image || GLOW_ICON_DEFAULT,
         badge: GLOW_BADGE,
         vibrate: [100, 50, 100],
         data: { 
-            url: '/index.html',
-            payload: data.data, // El registro completo de la base de datos
-            type: data.type     // 'mensajes' o 'reservas'
+            record: payload.data, // Pipedream envía 'data' con el objeto de BD
+            type: payload.type    // 'mensajes' o 'reservas'
         },
-        tag: 'glow-notification',
+        tag: 'glow-notification-' + Date.now(), // Tag único para no reemplazar notificaciones previas
         renotify: true
     };
 
-    // 1. Mostrar la notificación visual (Lo que ya hacías)
+    // 1. Mostrar la notificación visual SIEMPRE (App cerrada o background)
     const showNotificationPromise = self.registration.showNotification(title, options);
 
-    // 2. NUEVO: Enviar mensaje a la página abierta (index.html o spa.html)
+    // 2. Comunicar a la APP ABIERTA (Si está activa)
     const sendToClientPromise = self.clients.matchAll({
         type: 'window', 
         includeUncontrolled: true
     }).then((clientList) => {
         for (const client of clientList) {
-            // Le enviamos los datos a la pestaña
+            // Enviamos mensaje al frontend para actualizar UI en vivo
             client.postMessage({
                 action: 'NUEVA_DATA_PUSH',
-                tipo: data.type,
-                record: data.data // El registro de supabase que vino por Pipedream
+                tipo: payload.type,
+                record: payload.data 
             });
         }
     });
@@ -93,24 +82,15 @@ self.addEventListener('push', function(event) {
 // --- 5. NOTIFICATION CLICK ---
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
-    
-    // Si hay una acción específica (ej. botones), manéjala aquí
-    if (event.action === 'close') return;
-
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-            // 1. Si la app ya está abierta, enfocarla
+            // Si la app ya está abierta, enfocarla
             for (let i = 0; i < clientList.length; i++) {
                 const client = clientList[i];
-                if (client.url.includes('index.html') && 'focus' in client) {
-                    return client.focus();
-                }
+                if (client.url.includes('index.html') && 'focus' in client) return client.focus();
             }
-            // 2. Si no, abrirla
-            if (self.clients.openWindow) {
-                return self.clients.openWindow('/index.html');
-            }
+            // Si no, abrirla
+            if (self.clients.openWindow) return self.clients.openWindow('/index.html');
         })
     );
 });
-
