@@ -601,17 +601,17 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHpraHV2ZnN0bW1sam96cGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NjQzMzksImV4cCI6MjA4NDM0MDMzOX0.uWRs0xB68ltUVEJPICFuS9vYCmDN06KTUfgbS_4W9WU';
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: {
-        persistSession: false,   // No guardar sesión (usas tu propio login)
-        autoRefreshToken: false, // No intentar refrescar el token Anon
-        detectSessionInUrl: false
-    },
-    realtime: {
-        params: {
-            eventsPerSecond: 10 // Evitar límites de velocidad
-        }
-    }
-});
+            auth: {
+                persistSession: false,   
+                autoRefreshToken: false, 
+                detectSessionInUrl: false
+            },
+            realtime: {
+                params: {
+                    eventsPerSecond: 10 
+                }
+            }
+        });
 
         // DEFAULT DEMO DATA
         const DEMO_CONFIG = {
@@ -619,7 +619,7 @@
             nombre_encargada: 'Sofía Hernández',
             imagen_portada: 'https://i.ibb.co/67C1hcrb/1767558273844.png',
             logo_salon: 'https://i.ibb.co/99LsSW6N/Glow-20260112-140827-0000.png',
-            theme_color: '#E000E0', // Default Fuchsia
+            theme_color: '#E000E0', 
             servicios: [
                 { name: 'Corte y Secado', price: '$20', img: 'https://i.ibb.co/MDjWPmnP/1768612232066.png' },
                 { name: 'Color y Mechas', price: '$50', img: 'https://i.ibb.co/HfSxF2BS/1768649929059.png' },
@@ -633,7 +633,6 @@
                 const toast = document.createElement('div');
                 toast.className = 'toast';
                 
-                // Icono según tipo
                 let icon = 'ph-info';
                 if(type === 'reserva') icon = 'ph-calendar-check';
                 if(type === 'mensaje') icon = 'ph-chat-circle-text';
@@ -650,22 +649,19 @@
             code: null, 
             data: [], 
             currentConfig: {...DEMO_CONFIG},
-            realtimeChannel: null, // Guardamos la referencia para limpiar si es necesario
+            realtimeChannel: null, 
             
             async init() {
-                // 1. Buscamos si hay un código guardado en el celular/PC
                 const storedCode = localStorage.getItem('glowAdminCode');
                 
                 if(storedCode) {
                    console.log("Sesión encontrada:", storedCode);
                    this.code = storedCode;
                    
-                   // 2. Ocultamos login y mostramos dashboard inmediatamente
                    document.getElementById('login-screen').style.display = 'none';
                    document.getElementById('dashboard').style.display = 'flex';
                    document.getElementById('dashCodeDisplay').textContent = this.code;
 
-                   // 3. Cargamos la configuración del negocio (Logo, colores...)
                    try {
                        const { data } = await supabaseClient
                            .from('negocios')
@@ -687,10 +683,7 @@
                        }
                    } catch (e) { console.error("Error cargando config al inicio", e); }
 
-                   // 4. Cargamos los datos y conectamos Realtime
                    this.loadData();
-                   
-                   // 5. Iniciamos Service Worker (Notificaciones)
                    pushService.init();
                 }
             },
@@ -711,7 +704,6 @@
                 }
 
                 try {
-                    // 1. VERIFICACIÓN DE CREDENCIALES
                     const { data, error } = await supabaseClient
                         .from('negocios')
                         .select('*')
@@ -724,13 +716,11 @@
                         return;
                     }
 
-                    // 2. VERIFICACIÓN DE BLOQUEO
                     if (data.estado_suscripcion === false) {
                         this.showLoginError("⛔ CUENTA SUSPENDIDA<br>Contacta al soporte");
                         return;
                     }
 
-                    // LOGIN EXITOSO
                     this.code = codeVal;
                     localStorage.setItem('glowAdminCode', codeVal);
                     
@@ -739,7 +729,6 @@
                     document.getElementById('dashCodeDisplay').textContent = `${this.code}`;
                     
                     this.loadData();
-                    // Usamos la configuración recién traída
                     this.currentConfig = {
                         nombre_salon: data.nombre_salon || DEMO_CONFIG.nombre_salon,
                         nombre_encargada: data.nombre_encargada || DEMO_CONFIG.nombre_encargada,
@@ -775,14 +764,11 @@
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 if(btn) btn.classList.add('active');
                 
-                // Animar salida
                 const activeSection = document.querySelector('.view-section.active');
                 if(activeSection) activeSection.classList.remove('active');
                 
-                // Animar entrada
                 document.getElementById(`view-${tabName}`).classList.add('active');
                 
-                // Titulo dinámico
                 const titles = { 'calendar': 'Calendario', 'reservas': 'Reservas', 'mensajes': 'Mensajes', 'config': 'Ajustes' };
                 document.getElementById('dashTitle').textContent = titles[tabName];
             },
@@ -914,126 +900,121 @@
             },
 
             async loadData() {
-    console.log("📥 Cargando datos para:", this.code);
-    
-    // 1. Validamos que el código esté limpio
-    const cleanCode = this.code.trim().toUpperCase();
-
-    const { data, error } = await supabaseClient.from('reservas')
-        .select('*')
-        .eq('codigo_negocio', cleanCode) // Aseguramos mayúsculas
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error("❌ Error Supabase:", error);
-        notifications.show('Error', 'No se pudieron cargar las reservas');
-        return;
-    }
-
-    console.log("✅ Reservas encontradas:", data.length);
-
-    if(data) {
-        this.data = data;
-        
-        // Actualizamos UI
-        this.updateStatsUI(); // Forzar actualización de contadores
-        this.renderList();
-        adminCalendar.init(); // Renderizar calendario
-        
-        this.subscribe();
-    }
-    adminChat.init();
-},
-
-     subscribe() {
-    // 1. Limpiar canal anterior si existe
-    if (this.realtimeChannel) {
-        supabaseClient.removeChannel(this.realtimeChannel);
-    }
-
-    // 2. Definir el canal
-    const channelId = `admin_reservas_${this.code}`;
-    console.log("🔌 Conectando Realtime Reservas para:", this.code);
-
-    this.realtimeChannel = supabaseClient.channel(channelId)
-        .on(
-            'postgres_changes', 
-            { 
-                event: '*', 
-                schema: 'public', 
-                table: 'reservas',
-                filter: `codigo_negocio=eq.${this.code}` // Filtro directo
-            }, 
-            (payload) => {
-                console.log('🔥 CAMBIO RESERVAS:', payload);
+                console.log("📥 Cargando datos para:", this.code);
                 
-                // Manejo de eventos (Igual que tenías, pero limpio)
-                if (payload.eventType === 'INSERT') {
-                    const existe = this.data.some(r => r.id === payload.new.id);
-                    if (!existe) {
-                        this.data.unshift(payload.new);
-                        notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
-                    }
-                } 
-                else if (payload.eventType === 'UPDATE') {
-                    const index = this.data.findIndex(r => r.id === payload.new.id);
-                    if (index !== -1) {
-                        this.data[index] = payload.new;
-                    }
-                }
-                else if (payload.eventType === 'DELETE') {
-                    this.data = this.data.filter(r => r.id !== payload.old.id);
+                const cleanCode = this.code.trim().toUpperCase();
+
+                const { data, error } = await supabaseClient.from('reservas')
+                    .select('*')
+                    .eq('codigo_negocio', cleanCode) 
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error("❌ Error Supabase:", error);
+                    notifications.show('Error', 'No se pudieron cargar las reservas');
+                    return;
                 }
 
-                // Actualizar UI
-                this.updateStatsUI();
-                if (document.getElementById('view-reservas').classList.contains('active')) {
+                console.log("✅ Reservas encontradas:", data.length);
+
+                if(data) {
+                    this.data = data;
+                    
+                    this.updateStatsUI(); 
                     this.renderList();
-                }
-                if (document.getElementById('view-calendar').classList.contains('active')) {
-                    adminCalendar.render();
-                }
-            }
-        )
-        .subscribe((status, err) => {
-            console.log(`📡 Estado Reservas: ${status}`);
-            
-            if (status === 'SUBSCRIBED') {
-                document.getElementById('dashTitle').style.color = 'var(--ios-text)'; // Indicador visual normal
-            }
-            
-            // AUTO-RECONEXIÓN: Si falla el token o se cierra
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                console.error('⚠️ Error Realtime, reconectando en 5s...', err);
-                document.getElementById('dashTitle').style.color = 'orange'; // Indicador visual de error
-                
-                // Intentar reconectar
-                setTimeout(() => {
+                    adminCalendar.init(); 
+                    
                     this.subscribe();
-                }, 5000);
-            }
-        });
-},
+                }
+                adminChat.init();
+            },
+
+            subscribe() {
+                if (this.realtimeChannel) {
+                    supabaseClient.removeChannel(this.realtimeChannel);
+                }
+
+                const channelId = `admin_reservas_${this.code}`;
+                console.log("🔌 Conectando Realtime Reservas para:", this.code);
+
+                this.realtimeChannel = supabaseClient.channel(channelId)
+                    .on(
+                        'postgres_changes', 
+                        { 
+                            event: '*', 
+                            schema: 'public', 
+                            table: 'reservas',
+                            filter: `codigo_negocio=eq.${this.code}` 
+                        }, 
+                        (payload) => {
+                            console.log('🔥 CAMBIO RESERVAS:', payload);
+                            
+                            if (payload.eventType === 'INSERT') {
+                                const existe = this.data.some(r => r.id === payload.new.id);
+                                if (!existe) {
+                                    this.data.unshift(payload.new);
+                                    notifications.show('Nueva Reserva', `${payload.new.nombre} ha reservado.`, 'reserva');
+                                }
+                            } 
+                            else if (payload.eventType === 'UPDATE') {
+                                const index = this.data.findIndex(r => r.id === payload.new.id);
+                                if (index !== -1) {
+                                    this.data[index] = payload.new;
+                                }
+                            }
+                            else if (payload.eventType === 'DELETE') {
+                                this.data = this.data.filter(r => r.id !== payload.old.id);
+                            }
+
+                            this.updateStatsUI();
+                            if (document.getElementById('view-reservas').classList.contains('active')) {
+                                this.renderList();
+                            }
+                            if (document.getElementById('view-calendar').classList.contains('active')) {
+                                adminCalendar.render();
+                            }
+                        }
+                    )
+                    .subscribe((status, err) => {
+                        console.log(`📡 Estado Reservas: ${status}`);
+                        if (status === 'SUBSCRIBED') {
+                            document.getElementById('dashTitle').style.color = 'var(--ios-text)';
+                        }
+                        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                            console.error('⚠️ Error Realtime, reconectando en 5s...', err);
+                            document.getElementById('dashTitle').style.color = 'orange'; 
+                            setTimeout(() => {
+                                this.subscribe();
+                            }, 5000);
+                        }
+                    });
+            },
 
             
-// Agrega esta pequeña función auxiliar si no la tienes, para refrescar los números
-updateStatsUI() {
-    const pending = this.data.filter(r => r.estado === 'pendiente').length;
-    const confirmed = this.data.filter(r => r.estado === 'confirmada').length;
-    
-    const elPending = document.getElementById('cStatPending');
-    const elConfirmed = document.getElementById('cStatConfirmed');
-    
-    if(elPending) elPending.innerText = pending;
-    if(elConfirmed) elConfirmed.innerText = confirmed;
-},
+            // --- CORRECCIÓN AQUÍ: USO DE LOWERCASE PARA EVITAR ERRORES DE CONTEO ---
+            updateStatsUI() {
+                // Convertimos a minúsculas para comparar de forma segura
+                const pending = this.data.filter(r => r.estado && r.estado.toLowerCase() === 'pendiente').length;
+                const confirmed = this.data.filter(r => r.estado && (r.estado.toLowerCase().includes('confirmad') || r.estado.toLowerCase() === 'completada')).length;
+                
+                const elPending = document.getElementById('cStatPending');
+                const elConfirmed = document.getElementById('cStatConfirmed');
+                
+                if(elPending) elPending.innerText = pending;
+                if(elConfirmed) elConfirmed.innerText = confirmed;
+            },
+
             filter(status) {
                 this.renderList(status);
             },
 
             renderList(filterStatus = 'todas') {
                 const container = document.getElementById('bookingsList'); container.innerHTML = '';
-                const filtered = filterStatus === 'todas' ? this.data : this.data.filter(r => r.estado === filterStatus);
+                
+                // --- CORRECCIÓN AQUÍ: USO DE LOWERCASE EN EL FILTRO ---
+                const filtered = filterStatus === 'todas' 
+                    ? this.data 
+                    : this.data.filter(r => r.estado && r.estado.toLowerCase() === filterStatus.toLowerCase());
                 
                 if(filtered.length === 0) {
                     container.innerHTML = '<div style="text-align:center; color:#ccc; margin-top:20px;">No hay reservas</div>';
@@ -1041,9 +1022,14 @@ updateStatsUI() {
                 }
 
                 filtered.forEach(res => {
-                    const statusClass = res.estado === 'confirmada' ? 'st-confirmada' : (res.estado === 'cancelada' ? 'st-cancelada' : 'st-pendiente');
+                    // Normalizar estado para clases CSS
+                    const stLower = res.estado ? res.estado.toLowerCase() : '';
+                    let statusClass = 'st-pendiente';
+                    if(stLower.includes('confirmad')) statusClass = 'st-confirmada';
+                    else if(stLower.includes('cancel')) statusClass = 'st-cancelada';
+
                     let actions = '';
-                    if(res.estado === 'pendiente') {
+                    if(stLower === 'pendiente') {
                         actions = `<div class="action-row">
                             <div class="btn-action btn-reject" onclick="admin.updateStatus('${res.id}', 'cancelada')">Rechazar</div>
                             <div class="btn-action btn-approve" onclick="admin.updateStatus('${res.id}', 'confirmada')">Aceptar</div>
@@ -1056,15 +1042,13 @@ updateStatsUI() {
             },
 
             async updateStatus(id, st) {
-                // Actualización optimista UI (Feedback instantáneo)
                 const itemIndex = this.data.findIndex(r => r.id === id);
                 if(itemIndex !== -1) {
                     this.data[itemIndex].estado = st;
                     this.renderList();
                     adminCalendar.render();
+                    this.updateStatsUI(); // Actualizar contadores al cambiar estado
                 }
-
-                // Actualización Backend
                 await supabaseClient.from('reservas').update({ estado: st }).eq('id', id);
             }
         };
@@ -1079,18 +1063,21 @@ updateStatsUI() {
                 const firstDay = new Date(year, month, 1).getDay();
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
                 
-                const confirmed = admin.data.filter(r => r.estado === 'confirmada').length;
-                const pending = admin.data.filter(r => r.estado === 'pendiente').length;
-                
-                document.getElementById('cStatConfirmed').textContent = confirmed;
-                document.getElementById('cStatPending').textContent = pending;
+                // Actualizar contadores dentro del render (redundancia segura con LowerCase)
+                admin.updateStatsUI();
 
                 const today = new Date();
 
                 for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
                 for(let i=1; i<=daysInMonth; i++) {
                     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-                    const bookings = admin.data.filter(r => r.fecha === dateStr && r.estado !== 'cancelada');
+                    
+                    // --- CORRECCIÓN AQUÍ: FILTRO SEGURO DE FECHA Y ESTADO ---
+                    const bookings = admin.data.filter(r => 
+                        r.fecha === dateStr && 
+                        (r.estado && !r.estado.toLowerCase().includes('cancel'))
+                    );
+                    
                     const el = document.createElement('div'); el.className = 'cal-day';
                     
                     if(year === today.getFullYear() && month === today.getMonth() && i === today.getDate()) {
@@ -1099,7 +1086,8 @@ updateStatsUI() {
 
                     if(bookings.length > 0) {
                         el.classList.add('has-event');
-                        if(bookings.some(r => r.estado === 'pendiente')) el.classList.add('pending');
+                        // Verificar si hay pendientes (Case Insensitive)
+                        if(bookings.some(r => r.estado && r.estado.toLowerCase() === 'pendiente')) el.classList.add('pending');
                         el.onclick = () => this.openModal(i, this.monthNames[month], bookings);
                     } else {
                         el.innerHTML = `<span>${i}</span>`;
@@ -1115,187 +1103,187 @@ updateStatsUI() {
                 document.getElementById('modalDateTitle').textContent = `${day} de ${month}`;
                 const list = document.getElementById('modalEventList'); list.innerHTML = '';
                 bookings.forEach(b => {
+                    const stLower = b.estado ? b.estado.toLowerCase() : '';
+                    const isPending = stLower === 'pendiente';
+                    
                     const div = document.createElement('div');
                     div.style.cssText = "background:#F9F9F9; padding:15px; border-radius:15px; display:flex; justify-content:space-between; align-items:center; border:1px solid #eee;";
-                    div.innerHTML = `<div><div style="font-weight:700; font-size:1rem;">${b.nombre}</div><div style="font-size:0.85rem; color:#666;">${b.servicio} - ${b.hora}</div></div><div style="padding:4px 8px; border-radius:10px; font-size:0.7rem; font-weight:bold; text-transform:uppercase; background:${b.estado==='pendiente'?'#FFF4CE':'#E0F8E5'}; color:${b.estado==='pendiente'?'#B38600':'#008f4c'}">${b.estado.substring(0,4)}</div>`;
+                    div.innerHTML = `<div><div style="font-weight:700; font-size:1rem;">${b.nombre}</div><div style="font-size:0.85rem; color:#666;">${b.servicio} - ${b.hora}</div></div><div style="padding:4px 8px; border-radius:10px; font-size:0.7rem; font-weight:bold; text-transform:uppercase; background:${isPending?'#FFF4CE':'#E0F8E5'}; color:${isPending?'#B38600':'#008f4c'}">${b.estado.substring(0,10)}</div>`;
                     list.appendChild(div);
                 });
                 document.getElementById('dateModal').style.display = 'flex';
             },
             closeModal() { document.getElementById('dateModal').style.display = 'none'; }
         };
-const adminChat = {
-    activePhone: null, 
-    conversations: {}, 
-    realtimeChannel: null,
 
-    init() { 
-        if(!admin.code) return;
-        this.loadConversations();
-        this.subscribe();
-    },
+        const adminChat = {
+            activePhone: null, 
+            conversations: {}, 
+            realtimeChannel: null,
 
-    async loadConversations() {
-        const { data } = await supabaseClient
-            .from('mensajes')
-            .select('*')
-            .eq('codigo_negocio', admin.code)
-            .order('created_at', { ascending: true });
+            init() { 
+                if(!admin.code) return;
+                this.loadConversations();
+                this.subscribe();
+            },
 
-        if(data) {
-            this.conversations = {};
-            // Usamos la función auxiliar para procesar el historial
-            data.forEach(m => this.procesarMensajeLocal(m));
-            this.renderList();
-        }
-    },
+            async loadConversations() {
+                const { data } = await supabaseClient
+                    .from('mensajes')
+                    .select('*')
+                    .eq('codigo_negocio', admin.code)
+                    .order('created_at', { ascending: true });
 
-    // --- ESTA ES LA FUNCIÓN QUE TE FALTABA Y CAUSABA ERRORES ---
-    procesarMensajeLocal(m) {
-        const telStr = String(m.telefono_cliente);
-        
-        if(!this.conversations[telStr]) {
-            this.conversations[telStr] = { msgs: [], last: '', unread: false };
-        }
-        
-        // Evitar duplicados por ID
-        if(this.conversations[telStr].msgs.some(msg => msg.id === m.id)) return false;
-
-        this.conversations[telStr].msgs.push(m);
-        this.conversations[telStr].last = m.contenido;
-        
-        if(m.emisor === 'cliente' && !m.leido) {
-             this.conversations[telStr].unread = true;
-        }
-        return true; // Indica que fue un mensaje nuevo procesado
-    },
-
-    subscribe() {
-        if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
-        
-        const channelId = `admin_chat_live_${admin.code}`;
-
-        this.realtimeChannel = supabaseClient.channel(channelId)
-            .on('postgres_changes', { 
-                    event: 'INSERT', 
-                    schema: 'public', 
-                    table: 'mensajes', 
-                    filter: `codigo_negocio=eq.${admin.code}` 
-                }, 
-                (payload) => {
-                    const m = payload.new;
-                    const esNuevo = this.procesarMensajeLocal(m);
-                    
-                    if(esNuevo) {
-                        const telStr = String(m.telefono_cliente);
-                        if(m.emisor === 'cliente') {
-                            if(this.activePhone === telStr) { 
-                                this.renderBubble(m); 
-                                this.scroll(); 
-                            } else { 
-                                this.conversations[telStr].unread = true; 
-                                document.getElementById('msgNotify').style.display = 'block';
-                                notifications.show('Mensaje', telStr, 'mensaje');
-                            }
-                        } else if(this.activePhone === telStr) { 
-                            this.renderBubble(m); 
-                            this.scroll(); 
-                        }
-                        this.renderList();
-                    }
+                if(data) {
+                    this.conversations = {};
+                    data.forEach(m => this.procesarMensajeLocal(m));
+                    this.renderList();
                 }
-            )
-            .subscribe();
-    },
-    
-    renderList() {
-        const list = document.getElementById('inboxList'); list.innerHTML = '';
-        const sortedPhones = Object.keys(this.conversations).sort((a,b) => {
-            return this.conversations[b].unread - this.conversations[a].unread;
-        });
+            },
 
-        if(sortedPhones.length === 0) {
-            list.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc;">No hay mensajes</div>';
-            return;
-        }
+            procesarMensajeLocal(m) {
+                const telStr = String(m.telefono_cliente);
+                
+                if(!this.conversations[telStr]) {
+                    this.conversations[telStr] = { msgs: [], last: '', unread: false };
+                }
+                
+                if(this.conversations[telStr].msgs.some(msg => msg.id === m.id)) return false;
 
-        sortedPhones.forEach(phone => {
-            const chat = this.conversations[phone];
-            const div = document.createElement('div'); div.className = 'chat-item';
-            const client = admin.data.find(c => String(c.telefono) === phone);
-            const name = client ? `${client.nombre} ${client.apellido}` : phone;
-            const initial = name.charAt(0).toUpperCase();
+                this.conversations[telStr].msgs.push(m);
+                this.conversations[telStr].last = m.contenido;
+                
+                if(m.emisor === 'cliente' && !m.leido) {
+                    this.conversations[telStr].unread = true;
+                }
+                return true; 
+            },
+
+            subscribe() {
+                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
+                
+                const channelId = `admin_chat_live_${admin.code}`;
+
+                this.realtimeChannel = supabaseClient.channel(channelId)
+                    .on('postgres_changes', { 
+                            event: 'INSERT', 
+                            schema: 'public', 
+                            table: 'mensajes', 
+                            filter: `codigo_negocio=eq.${admin.code}` 
+                        }, 
+                        (payload) => {
+                            const m = payload.new;
+                            const esNuevo = this.procesarMensajeLocal(m);
+                            
+                            if(esNuevo) {
+                                const telStr = String(m.telefono_cliente);
+                                if(m.emisor === 'cliente') {
+                                    if(this.activePhone === telStr) { 
+                                        this.renderBubble(m); 
+                                        this.scroll(); 
+                                    } else { 
+                                        this.conversations[telStr].unread = true; 
+                                        document.getElementById('msgNotify').style.display = 'block';
+                                        notifications.show('Mensaje', telStr, 'mensaje');
+                                    }
+                                } else if(this.activePhone === telStr) { 
+                                    this.renderBubble(m); 
+                                    this.scroll(); 
+                                }
+                                this.renderList();
+                            }
+                        }
+                    )
+                    .subscribe();
+            },
             
-            div.innerHTML = `
-                <div class="chat-avatar">${initial}</div>
-                <div class="chat-info">
-                    <div class="chat-name">${name}</div>
-                    <div class="chat-preview" style="${chat.unread?'font-weight:bold; color:black':''}">${chat.last}</div>
-                </div>
-                ${chat.unread ? '<div class="chat-unread-dot"></div>' : ''}
-            `;
-            div.onclick = () => this.open(phone, name);
-            list.appendChild(div);
-        });
-    },
+            renderList() {
+                const list = document.getElementById('inboxList'); list.innerHTML = '';
+                const sortedPhones = Object.keys(this.conversations).sort((a,b) => {
+                    return this.conversations[b].unread - this.conversations[a].unread;
+                });
 
-    open(phone, name) {
-        this.activePhone = String(phone);
-        if(this.conversations[this.activePhone]) {
-            this.conversations[this.activePhone].unread = false;
-        }
-        document.getElementById('msgNotify').style.display = 'none';
-        this.renderList();
-        
-        const view = document.getElementById('adminChatView');
-        view.classList.add('active'); 
-        
-        document.getElementById('chatActiveUser').textContent = name;
-        document.getElementById('chatFooterInput').style.display = 'flex';
-        const body = document.getElementById('adminChatBody'); body.innerHTML = '';
-        
-        if(this.conversations[this.activePhone]) {
-            this.conversations[this.activePhone].msgs.forEach(m => this.renderBubble(m));
-        }
-        this.scroll();
-    },
+                if(sortedPhones.length === 0) {
+                    list.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc;">No hay mensajes</div>';
+                    return;
+                }
 
-    closeMobile() {
-        document.getElementById('adminChatView').classList.remove('active');
-        this.activePhone = null;
-    },
+                sortedPhones.forEach(phone => {
+                    const chat = this.conversations[phone];
+                    const div = document.createElement('div'); div.className = 'chat-item';
+                    const client = admin.data.find(c => String(c.telefono) === phone);
+                    const name = client ? `${client.nombre} ${client.apellido}` : phone;
+                    const initial = name.charAt(0).toUpperCase();
+                    
+                    div.innerHTML = `
+                        <div class="chat-avatar">${initial}</div>
+                        <div class="chat-info">
+                            <div class="chat-name">${name}</div>
+                            <div class="chat-preview" style="${chat.unread?'font-weight:bold; color:black':''}">${chat.last}</div>
+                        </div>
+                        ${chat.unread ? '<div class="chat-unread-dot"></div>' : ''}
+                    `;
+                    div.onclick = () => this.open(phone, name);
+                    list.appendChild(div);
+                });
+            },
 
-    renderBubble(m) {
-        const div = document.createElement('div'); div.className = `msg-bubble ${m.emisor}`;
-        div.textContent = m.contenido;
-        document.getElementById('adminChatBody').appendChild(div);
-    },
+            open(phone, name) {
+                this.activePhone = String(phone);
+                if(this.conversations[this.activePhone]) {
+                    this.conversations[this.activePhone].unread = false;
+                }
+                document.getElementById('msgNotify').style.display = 'none';
+                this.renderList();
+                
+                const view = document.getElementById('adminChatView');
+                view.classList.add('active'); 
+                
+                document.getElementById('chatActiveUser').textContent = name;
+                document.getElementById('chatFooterInput').style.display = 'flex';
+                const body = document.getElementById('adminChatBody'); body.innerHTML = '';
+                
+                if(this.conversations[this.activePhone]) {
+                    this.conversations[this.activePhone].msgs.forEach(m => this.renderBubble(m));
+                }
+                this.scroll();
+            },
 
-    async send() {
-        const inp = document.getElementById('adminChatInput');
-        const txt = inp.value.trim();
-        if(!txt || !this.activePhone) return;
-        
-        // Optimismo UI (Mostrar antes de enviar)
-        const fakeMsg = { contenido: txt, emisor: 'admin', telefono_cliente: this.activePhone, id: 'temp'+Date.now() };
-        this.renderBubble(fakeMsg);
-        this.scroll();
-        inp.value = '';
+            closeMobile() {
+                document.getElementById('adminChatView').classList.remove('active');
+                this.activePhone = null;
+            },
 
-        await supabaseClient.from('mensajes').insert([{ 
-            codigo_negocio: admin.code, 
-            telefono_cliente: this.activePhone, 
-            emisor: 'admin', 
-            contenido: txt, 
-            leido: true 
-        }]);
-    },
+            renderBubble(m) {
+                const div = document.createElement('div'); div.className = `msg-bubble ${m.emisor}`;
+                div.textContent = m.contenido;
+                document.getElementById('adminChatBody').appendChild(div);
+            },
 
-    scroll() { 
-        const b = document.getElementById('adminChatBody'); 
-        setTimeout(()=>b.scrollTop=b.scrollHeight, 50); 
-    }
-};
+            async send() {
+                const inp = document.getElementById('adminChatInput');
+                const txt = inp.value.trim();
+                if(!txt || !this.activePhone) return;
+                
+                const fakeMsg = { contenido: txt, emisor: 'admin', telefono_cliente: this.activePhone, id: 'temp'+Date.now() };
+                this.renderBubble(fakeMsg);
+                this.scroll();
+                inp.value = '';
+
+                await supabaseClient.from('mensajes').insert([{ 
+                    codigo_negocio: admin.code, 
+                    telefono_cliente: this.activePhone, 
+                    emisor: 'admin', 
+                    contenido: txt, 
+                    leido: true 
+                }]);
+            },
+
+            scroll() { 
+                const b = document.getElementById('adminChatBody'); 
+                setTimeout(()=>b.scrollTop=b.scrollHeight, 50); 
+            }
+        };
 
         const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
 
@@ -1304,7 +1292,6 @@ const adminChat = {
             swRegistration: null,
             
             async init() {
-                // REGISTRAR SERVICE WORKER SI EXISTE
                 if ('serviceWorker' in navigator) {
                     try {
                         this.swRegistration = await navigator.serviceWorker.register('sw.js');
@@ -1361,117 +1348,38 @@ const adminChat = {
 
         admin.init();
 
-        // --- NUEVO SISTEMA: ACTUALIZACIÓN VÍA PUSH (SW MESSAGING) ---
-        // ESTA ES LA PARTE CORREGIDA PARA QUE LOS MENSAJES SE VEAN EN TIEMPO REAL
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('message', (event) => {
-                console.log("📨 Datos recibidos del Service Worker:", event.data);
+                console.log("📨 Datos recibidos del SW:", event.data);
 
-                if (event.data.action === 'UPDATE_DATOS') {
-                    const tipo = event.data.tipo;       
-                    const nuevoRegistro = event.data.payload;
+                if (event.data.action === 'NUEVA_DATA_PUSH') {
+                    const { tipo, record } = event.data;
 
-                    // A. SI LLEGA UNA RESERVA
-                    if (tipo === 'reservas') {
-                        const existe = admin.data.some(r => r.id === nuevoRegistro.id);
-                        if (!existe) {
-                            admin.data.unshift(nuevoRegistro); 
-                            
-                            admin.updateStatsUI();
-                            if (document.getElementById('view-reservas').classList.contains('active')) {
-                                admin.renderList();
-                            }
-                            if (document.getElementById('view-calendar').classList.contains('active')) {
-                                adminCalendar.render();
-                            }
-                            notifications.show('Nueva Reserva', 'La lista se ha actualizado.', 'reserva');
-                        }
-                    }
-
-                    // B. SI LLEGA UN MENSAJE (CORREGIDO)
                     if (tipo === 'mensajes') {
-                        const m = nuevoRegistro;
-                        const telefonoStr = String(m.telefono_cliente); // Convertir a String para evitar error de tipos
+                        document.getElementById('notifySound').play().catch(()=>{});
+                        const esNuevo = adminChat.procesarMensajeLocal(record);
                         
-                        // Inicializar conversación si es nuevo cliente
-                        if(!adminChat.conversations[telefonoStr]) {
-                            adminChat.conversations[telefonoStr] = { msgs: [], last: '', unread: false };
+                        if (esNuevo) {
+                            const telStr = String(record.telefono_cliente);
+                            
+                            if (adminChat.activePhone === telStr) {
+                                adminChat.renderBubble(record);
+                                adminChat.scroll();
+                            } else {
+                                adminChat.conversations[telStr].unread = true;
+                                notifications.show('Nuevo Mensaje', `${record.telefono_cliente}`, 'mensaje');
+                            }
+                            adminChat.renderList();
                         }
-                        
-                        // EVITAR DUPLICADOS (Si Realtime ya lo puso, no hacer nada)
-                        const yaExiste = adminChat.conversations[telefonoStr].msgs.some(msg => msg.id === m.id);
-                        if (yaExiste) return;
-
-                        // Agregar mensaje
-                        adminChat.conversations[telefonoStr].msgs.push(m);
-                        adminChat.conversations[telefonoStr].last = m.contenido;
-                        
-                        // Si estamos viendo ese chat, hacer scroll y mostrar INMEDIATAMENTE
-                        if(adminChat.activePhone === telefonoStr) {
-                            adminChat.renderBubble(m); // ESTO PINTA LA BURBUJA
-                            adminChat.scroll();
-                        } else {
-                            // Si no estamos viendo ese chat, marcar pendiente
-                            adminChat.conversations[telefonoStr].unread = true;
-                            document.getElementById('msgNotify').style.display = 'block';
-                            notifications.show('Nuevo Mensaje', `De: ${telefonoStr}`, 'mensaje');
-                        }
-                        
-                        // Actualizar la lista lateral de chats
-                        adminChat.renderList();
+                    } 
+                    else if (tipo === 'reservas') {
+                        notifications.show('Nueva Reserva', `${record.nombre}`, 'reserva');
+                        // RECARGAR DATOS COMPLETOS PARA ASEGURAR SINCRONÍA
+                        admin.loadData();
                     }
                 }
             });
         }
-
-        // AGREGAR EN index.html (dentro del <script>)
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-        console.log("📨 Datos recibidos del SW:", event.data);
-
-        // Si el mensaje viene del Push que configuramos
-        if (event.data.action === 'NUEVA_DATA_PUSH') {
-            const { tipo, record } = event.data;
-
-            if (tipo === 'mensajes') {
-                // Usamos la misma lógica que creamos antes para pintar el mensaje
-                // Forzamos que sea 'cliente' visualmente si es necesario, 
-                // aunque el record ya trae 'emisor'.
-                
-                // Reproducir sonido
-                document.getElementById('notifySound').play().catch(()=>{});
-
-                // Inyectar al chat
-                const esNuevo = adminChat.procesarMensajeLocal(record);
-                
-                if (esNuevo) {
-                    const telStr = String(record.telefono_cliente);
-                    
-                    // Si tengo ese chat abierto, renderizar burbuja y scroll
-                    if (adminChat.activePhone === telStr) {
-                        adminChat.renderBubble(record);
-                        adminChat.scroll();
-                    } else {
-                        // Si no, mostrar aviso visual
-                        adminChat.conversations[telStr].unread = true;
-                        notifications.show('Nuevo Mensaje', `${record.telefono_cliente}`, 'mensaje');
-                    }
-                    // Actualizar la lista lateral
-                    adminChat.renderList();
-                }
-            } 
-            else if (tipo === 'reservas') {
-                // Si es una reserva, actualizamos la lista de reservas
-                notifications.show('Nueva Reserva', `${record.nombre}`, 'reserva');
-                // Si tienes una función para recargar reservas, llámala aquí:
-                if (typeof loadReservations === 'function') loadReservations(); 
-            }
-        }
-    });
-}
     </script>
 </body>
 </html>
-
-
