@@ -1373,6 +1373,54 @@ updateStatsUI() {
                 }
             });
         }
+
+        // AGREGAR EN index.html (dentro del <script>)
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        console.log("📨 Datos recibidos del SW:", event.data);
+
+        // Si el mensaje viene del Push que configuramos
+        if (event.data.action === 'NUEVA_DATA_PUSH') {
+            const { tipo, record } = event.data;
+
+            if (tipo === 'mensajes') {
+                // Usamos la misma lógica que creamos antes para pintar el mensaje
+                // Forzamos que sea 'cliente' visualmente si es necesario, 
+                // aunque el record ya trae 'emisor'.
+                
+                // Reproducir sonido
+                document.getElementById('notifySound').play().catch(()=>{});
+
+                // Inyectar al chat
+                const esNuevo = adminChat.procesarMensajeLocal(record);
+                
+                if (esNuevo) {
+                    const telStr = String(record.telefono_cliente);
+                    
+                    // Si tengo ese chat abierto, renderizar burbuja y scroll
+                    if (adminChat.activePhone === telStr) {
+                        adminChat.renderBubble(record);
+                        adminChat.scroll();
+                    } else {
+                        // Si no, mostrar aviso visual
+                        adminChat.conversations[telStr].unread = true;
+                        notifications.show('Nuevo Mensaje', `${record.telefono_cliente}`, 'mensaje');
+                    }
+                    // Actualizar la lista lateral
+                    adminChat.renderList();
+                }
+            } 
+            else if (tipo === 'reservas') {
+                // Si es una reserva, actualizamos la lista de reservas
+                notifications.show('Nueva Reserva', `${record.nombre}`, 'reserva');
+                // Si tienes una función para recargar reservas, llámala aquí:
+                if (typeof loadReservations === 'function') loadReservations(); 
+            }
+        }
+    });
+}
     </script>
 </body>
 </html>
+
