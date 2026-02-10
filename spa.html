@@ -553,55 +553,6 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHpraHV2ZnN0bW1sam96cGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NjQzMzksImV4cCI6MjA4NDM0MDMzOX0.uWRs0xB68ltUVEJPICFuS9vYCmDN06KTUfgbS_4W9WU';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-
-        // --- NOTIFICACIONES CONFIG ---
-const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
-
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
-
-// Función principal para activar
-async function subscribeUserToPush(telefono) {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-    try {
-        // 1. Registramos el SW específico del CLIENTE
-        const register = await navigator.serviceWorker.register('/sw-client.js');
-        
-        // 2. Pedimos permiso (El navegador mostrará el prompt aquí)
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
-
-        // 3. Obtenemos el token de suscripción
-        const subscription = await register.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-        });
-
-        const subJson = subscription.toJSON();
-
-        // 4. Guardamos en Supabase en el cliente actual
-        // IMPORTANTE: BUSINESS_CODE debe estar definido globalmente en tu script
-        await supabaseClient
-            .from('clientes')
-            .update({ push_subscription: subJson }) // Guardamos el JSON serializado            .eq('telefono', telefono)
-            .eq('codigo_negocio', BUSINESS_CODE);
-            
-        console.log("🔔 Notificaciones activadas para el cliente");
-
-    } catch (err) {
-        console.error("Error activando notificaciones:", err);
-    }
-}
-
         // --- 2. OBTENER CÓDIGO DE NEGOCIO ---
         let rawRef = window.NEGOCIO_ID_SERVER;
         if (!rawRef) {
@@ -732,7 +683,7 @@ async function subscribeUserToPush(telefono) {
                 document.getElementById('appleIcon').href = iconUrl;
                 document.getElementById('favIcon').href = iconUrl;
                 this.updateManifestTheme(currentConfig.theme_color);
-                if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+                if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw-client.js');
             },
 
             applyThemeColor(colorHex) {
@@ -860,7 +811,7 @@ async function subscribeUserToPush(telefono) {
                     this.data.surname = data.apellido;
                     this.data.photoUrl = data.foto_url;
                     
-                    chatApp.enable(); // <-- CORRECCIÓN: Ahora esta función existe
+                    chatApp.enable(); 
                     document.getElementById('welcome-text').innerHTML = `Hola, espero que estés bien.<br>Bienvenida de nuevo, <b>${data.nombre} ${data.apellido}</b>`;
                     document.getElementById('welcome-overlay').style.display = 'flex'; 
                     document.getElementById('actionBar').style.display = 'none';
@@ -874,7 +825,7 @@ async function subscribeUserToPush(telefono) {
                     document.getElementById('photo-section').style.display = 'flex';
                     document.getElementById('actionBar').style.display = 'block'; 
                     document.getElementById('inputName').focus();
-                    chatApp.enable(); // <-- CORRECCIÓN: Ahora esta función existe
+                    chatApp.enable(); 
                 }
             },
             
@@ -1061,11 +1012,12 @@ async function subscribeUserToPush(telefono) {
             }
         };
 
-        /* --- CHAT APP CORREGIDO Y COMPLETO --- */
+        /* --- CHAT APP CON SOPORTE PUSH REALTIME HÍBRIDO --- */
         const chatApp = {
             isOpen: false,
             activePhone: null,
             realtimeChannel: null,
+            messagesIds: new Set(), // Set para evitar duplicados entre Push y Realtime
 
             init() {
                 const savedPhone = localStorage.getItem(STORAGE_KEY); 
@@ -1074,7 +1026,6 @@ async function subscribeUserToPush(telefono) {
                 }
             },
 
-            // CORRECCIÓN PRINCIPAL: Se agrega la función 'enable' que faltaba
             enable() {
                 document.getElementById('headerChatBtn').classList.remove('hidden');
             },
@@ -1083,16 +1034,23 @@ async function subscribeUserToPush(telefono) {
                 if(!phone) return;
                 this.activePhone = phone;
                 this.loadHistory();
-                this.subscribe(); 
-                this.enable(); // Nos aseguramos de habilitarlo también aquí
+                this.subscribe(); // Mantenemos suscripción Realtime (backup)
+                this.enable();
             },
 
+            // AQUÍ OCURRE LA MAGIA: Al abrir el chat, registramos el Push
             toggle() {
                 this.isOpen = !this.isOpen;
                 document.getElementById('chat-drawer').classList.toggle('open', this.isOpen);
+                
                 if (this.isOpen) {
                     document.getElementById('chatBadge').classList.remove('active');
                     this.scrollToBottom();
+
+                    // Intentamos registrar Push para asegurar que podemos recibir respuestas
+                    if (this.activePhone) {
+                        subscribeUserToPush(this.activePhone);
+                    }
                 }
             },
 
@@ -1100,6 +1058,9 @@ async function subscribeUserToPush(telefono) {
 
             async loadHistory() {
                 if (!this.activePhone) return;
+                
+                // Limpiamos historial local para evitar duplicados al recargar
+                this.messagesIds.clear();
 
                 const { data } = await supabaseClient
                     .from('mensajes')
@@ -1119,18 +1080,12 @@ async function subscribeUserToPush(telefono) {
                 }
             },
 
+            // Suscripción Realtime (Secundaria/Backup)
             subscribe() {
                 if (!this.activePhone) return;
-                
-                // Limpieza de canal anterior para evitar conflictos de socket
-                if (this.realtimeChannel) {
-                    supabaseClient.removeChannel(this.realtimeChannel);
-                    this.realtimeChannel = null;
-                }
+                if (this.realtimeChannel) supabaseClient.removeChannel(this.realtimeChannel);
 
                 const channelId = `cliente_room_${this.activePhone}`;
-                console.log("🔌 Cliente: Suscribiendo a", channelId);
-
                 this.realtimeChannel = supabaseClient.channel(channelId)
                     .on(
                         'postgres_changes', 
@@ -1141,22 +1096,32 @@ async function subscribeUserToPush(telefono) {
                             filter: `telefono_cliente=eq.${this.activePhone}` 
                         },
                         (payload) => {
-                            const m = payload.new;
-                            if (m.emisor === 'admin') { 
-                                this.renderMessage(m);
-                                if (!this.isOpen) {
-                                    document.getElementById('chatBadge').classList.add('active');
-                                    if(navigator.vibrate) navigator.vibrate(200);
-                                }
-                            }
+                            // Usamos el manejador centralizado para evitar duplicados
+                            this.handleIncomingMessage(payload.new);
                         }
                     )
-                    .subscribe((status) => {
-                        console.log("Estado Socket Cliente:", status);
-                    });
+                    .subscribe();
+            },
+
+            // FUNCIÓN CENTRALIZADA: Maneja mensajes de Push y Realtime
+            handleIncomingMessage(msg) {
+                // 1. Verificar duplicados por ID
+                if (msg.id && this.messagesIds.has(msg.id)) return;
+                
+                // 2. Renderizar
+                this.renderMessage(msg);
+
+                // 3. Notificación Visual (Badge / Vibración) si el chat está cerrado
+                if (msg.emisor === 'admin' && !this.isOpen) {
+                    document.getElementById('chatBadge').classList.add('active');
+                    if(navigator.vibrate) navigator.vibrate(200);
+                }
             },
 
             renderMessage(msg) {
+                if (msg.id && this.messagesIds.has(msg.id)) return;
+                if (msg.id) this.messagesIds.add(msg.id);
+
                 const container = document.getElementById('chatContainer');
                 const empty = document.getElementById('emptyMsg');
                 if(empty) empty.remove();
@@ -1178,27 +1143,35 @@ async function subscribeUserToPush(telefono) {
                 if (!txt) return;
                 if (!this.activePhone) return alert("Error: No hay teléfono registrado.");
 
+                // Render optimista
+                const tempId = 'temp_' + Date.now();
                 const fakeMsg = {
                     contenido: txt,
                     emisor: 'cliente',
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    id: tempId
                 };
+                
                 this.renderMessage(fakeMsg); 
-                this.scrollToBottom();
                 
                 input.value = '';
 
-                const { error } = await supabaseClient.from('mensajes').insert([{
+                const { data, error } = await supabaseClient.from('mensajes').insert([{
                     codigo_negocio: BUSINESS_CODE,
                     telefono_cliente: this.activePhone,
                     emisor: 'cliente',
                     contenido: txt,
                     leido: false
-                }]);
+                }]).select();
 
                 if (error) {
                     console.error("Error enviando:", error);
-                    alert("Error de conexión. El mensaje tal vez no se guardó.");
+                    alert("Error de conexión.");
+                    this.messagesIds.delete(tempId); // Permitir reintento si falla
+                } else if (data && data[0]) {
+                    // Actualizamos el ID temporal por el real para evitar duplicados si entra por realtime
+                    this.messagesIds.delete(tempId);
+                    this.messagesIds.add(data[0].id);
                 }
             },
 
@@ -1214,65 +1187,70 @@ async function subscribeUserToPush(telefono) {
         `;
         document.head.appendChild(styleSheet);
 
-        // --- PEGAR ESTO AL FINAL DE TU SCRIPT EN SPA.HTML ---
+        // --- LÓGICA PUSH NOTIFICATIONS ---
 
-// 1. Función para convertir la clave pública (No toques esto, es matemática necesaria)
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
 
-// 2. Función para pedir permiso y guardar la suscripción
-async function subscribeUserToPush(telefono) {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log("Push no soportado en este navegador");
-        return;
-    }
+        async function subscribeUserToPush(telefono) {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-    try {
-        // Pedimos permiso al usuario (Saldrá la ventanita de "Permitir notificaciones")
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
+            try {
+                // 1. Pedir permiso
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') return;
 
-        // Registramos el Service Worker
-        const registration = await navigator.serviceWorker.register('/sw-client.js');
-        
-        // Esperamos a que esté listo
-        await navigator.serviceWorker.ready;
+                // 2. Obtener registro de SW
+                const registration = await navigator.serviceWorker.ready;
 
-        // Nos suscribimos
-        const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
-        const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+                // 3. Suscribirse
+                const VAPID_PUBLIC_KEY = 'BMhAd4_z7aPvGpv-bk0txj3YePu8D4uN0zoKt-AFu6O7yVv_c6_lXn0bIuwlhOSq6nhUnDF_mLTfbu_z30B902c';
+                const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
-        const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: convertedVapidKey
-        });
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedVapidKey
+                });
 
-        // Guardamos la suscripción en Supabase asociada al teléfono
-        const { error } = await supabaseClient
-            .from('clientes')
-            .update({ push_subscription: JSON.stringify(subscription) })
-            .eq('telefono', telefono)
-            .eq('codigo_negocio', window.BUSINESS_CODE); // Asegúrate que BUSINESS_CODE esté definido arriba
+                // 4. Guardar en Supabase (Usamos la columna existente push_subscription)
+                const { error } = await supabaseClient
+                    .from('clientes')
+                    .update({ push_subscription: JSON.stringify(subscription) })
+                    .eq('telefono', telefono)
+                    .eq('codigo_negocio', BUSINESS_CODE);
 
-        if (error) console.error("Error guardando suscripción:", error);
-        else console.log("✅ Cliente suscrito a notificaciones!");
+                if (error) console.error("Error guardando push:", error);
+                else console.log("🔔 Cliente suscrito a notificaciones Push");
 
-    } catch (err) {
-        console.error("Error en proceso Push:", err);
-    }
-}
+            } catch (err) {
+                console.error("Error en proceso Push:", err);
+            }
+        }
+
+        // --- LISTENER GLOBAL DEL SERVICE WORKER (EL CORAZÓN DEL "FAKE REALTIME") ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                // Escuchamos el evento específico enviado por sw-client.js
+                if (event.data.action === 'NUEVA_DATA_PUSH_CLIENTE') {
+                    const { type, data } = event.data.payload;
+
+                    // Si es un mensaje, lo inyectamos directamente al chat
+                    if (type === 'mensajes' && data) {
+                        console.log("📨 Mensaje recibido vía Service Worker (Push):", data);
+                        chatApp.handleIncomingMessage(data);
+                    }
+                }
+            });
+        }
 
     </script>
 </body>
 </html>
-
-
-
