@@ -419,6 +419,7 @@
     </div>
 
     <div id="app-frame">
+        <audio id="msgSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
         <header class="app-header">
             <button class="btn-nav hidden" id="prevBtn" onclick="app.prevStep()">
                 <i class="ph ph-caret-left"></i>
@@ -1251,6 +1252,42 @@
             });
         }
 
+        // --- LISTENER GLOBAL DEL SERVICE WORKER (REALTIME VÍA PUSH) ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                console.log("📨 Datos recibidos del SW (Cliente):", event.data);
+
+                // Verificamos si la acción coincide con lo que envía sw-client.js
+                if (event.data.action === 'NUEVA_DATA_PUSH_CLIENTE') {
+                    
+                    // Extraemos los datos limpios directamente
+                    const { tipo, record } = event.data;
+
+                    // Si es un mensaje, lo inyectamos al chat
+                    if (tipo === 'mensajes' && record) {
+                        
+                        document.getElementById('msgSound').play().catch(()=>{}); // Reproducir sonido
+                        // Efecto de sonido (opcional, igual que en Admin)
+                        // const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                        // audio.play().catch(e => console.log(e));
+
+                        console.log("💬 Inyectando mensaje en chat:", record);
+                        
+                        // Usamos tu función existente que ya maneja duplicados
+                        chatApp.handleIncomingMessage(record);
+                        
+                        // Si el chat está cerrado, mostramos el punto rojo
+                        if (!chatApp.isOpen) {
+                            document.getElementById('chatBadge').classList.add('active');
+                            // Pequeña vibración en el celular si el navegador lo permite
+                            if(navigator.vibrate) navigator.vibrate(200);
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
 </body>
 </html>
+
