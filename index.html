@@ -1304,102 +1304,75 @@ const pushService = {
     isInitialized: false,
     
     async init() {
-        // 1. Verificar soporte del navegador
+        // 1. Verificar soporte
         if (!('serviceWorker' in navigator)) {
             console.warn('⚠️ Service Worker no soportado');
             this.updateButtonState('unsupported');
             return;
         }
-        
-        // 2. Verificar si estamos en HTTPS o localhost
-        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-            console.warn('⚠️ Service Worker requiere HTTPS o localhost');
-            this.updateButtonState('https-required');
-            return;
-        }
-        
+
+        // 2. Intentar registrar (Lógica simplificada para evitar bloqueos)
         try {
-            console.log('🔄 Registrando Service Worker...');
+            console.log('🔄 Intentando registrar SW...');
             
-            // 3. Registrar el Service Worker
+            // Registramos y NO esperamos a que se instale/active, solo necesitamos el registro
             this.swRegistration = await navigator.serviceWorker.register('sw.js', {
-                scope: './',
-                updateViaCache: 'none'
+                scope: './'
             });
-            
-            console.log('✅ Service Worker registrado:', this.swRegistration);
-            
-            // 4. Esperar a que el Service Worker esté activo
-            if (this.swRegistration.installing) {
-                console.log('⏳ Service Worker instalando...');
-                await new Promise(resolve => {
-                    this.swRegistration.installing.addEventListener('statechange', () => {
-                        if (this.swRegistration.installing.state === 'activated') {
-                            console.log('✅ Service Worker activado');
-                            resolve();
-                        }
-                    });
-                });
-            } else if (this.swRegistration.waiting) {
-                await this.swRegistration.update();
-            }
-            
-            // 5. Verificar si ya hay una suscripción activa
-            await this.updateButtonState('checking');
-            
+
+            console.log('✅ Service Worker registrado correctamente');
             this.isInitialized = true;
-            console.log('✅ PushService inicializado correctamente');
-            
+
+            // 3. Verificar estado actual
+            const state = await this.checkCurrentSubscription();
+            this.updateButtonState(state);
+
         } catch (error) {
-            console.error('❌ Error registrando Service Worker:', error);
+            console.error('❌ Error fatal al registrar SW:', error);
+            // Si falla, es probable que sw.js no exista o no sea accesible
             this.updateButtonState('error');
         }
     },
 
     async enable() {
-        console.log('🔔 Activando notificaciones...');
-        
-        // 1. Verificar que esté inicializado
+        // 1. Auto-reparación: Si no está inicializado, intentar ahora
         if (!this.isInitialized || !this.swRegistration) {
-            console.error('❌ PushService no inicializado');
-            alert('Por favor, recarga la página e intenta nuevamente.');
+            console.log('⚠️ No inicializado, reintentando...');
             await this.init();
-            return;
+            
+            if (!this.isInitialized) {
+                alert('Error: No se encuentra el archivo sw.js. Verifica que esté en la misma carpeta.');
+                return;
+            }
         }
-        
+
         // 2. Pedir permiso
         const permission = await Notification.requestPermission();
-        console.log('📋 Permiso de notificaciones:', permission);
-        
         if (permission !== 'granted') {
-            alert('❌ Se necesitan permisos para recibir notificaciones.');
+            alert('❌ Debes dar permisos en el navegador para recibir avisos.');
             return;
         }
         
         if (!admin.code) {
-            alert('❌ Necesitas iniciar sesión primero.');
+            alert('❌ Inicia sesión primero.');
             return;
         }
 
         try {
-            console.log('📡 Suscribiendo a Push Notifications...');
+            this.btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
             
-            // 3. Crear suscripción
+            // 3. Suscribir
             const subscription = await this.swRegistration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
             });
 
-            // 4. Convertir a JSON para enviar a Supabase
-            const subJson = subscription.toJSON();
-            console.log('📦 Suscripción creada:', subJson);
-
-            // 5. Guardar en Supabase
+            // 4. Guardar en Supabase
             const { error } = await supabaseClient
                 .from('admin_subscriptions')
                 .upsert({
                     codigo_negocio: admin.code,
-                    subscription: subJson,
+                    subscription: subscription.toJSON(),
                     updated_at: new Date().toISOString()
                 }, { 
                     onConflict: 'codigo_negocio' 
@@ -1407,14 +1380,11 @@ const pushService = {
 
             if (error) throw error;
 
-            // 6. Actualizar UI
             notifications.show('✅ Notificaciones Activadas', 'Recibirás alertas en tiempo real.');
             this.updateButtonState('active');
-            
-            console.log('🎉 Notificaciones activadas exitosamente');
 
         } catch (error) {
-            console.error('❌ Error activando notificaciones:', error);
+            console.error('❌ Error activando:', error);
             alert('Error: ' + error.message);
             this.updateButtonState('error');
         }
@@ -1423,59 +1393,39 @@ const pushService = {
     async updateButtonState(state) {
         const iconMap = {
             'unsupported': { icon: 'ph-warning', color: '#ccc', text: 'No soportado' },
-            'https-required': { icon: 'ph-warning', color: 'orange', text: 'Requiere HTTPS' },
-            'error': { icon: 'ph-warning-circle', color: '#FF3B30', text: 'Error' },
-            'checking': { icon: 'ph-hourglass', color: '#8E8E93', text: 'Verificando...' },
-            'inactive': { icon: 'ph-bell', color: 'var(--ios-text)', text: 'Activar' },
-            'active': { icon: 'ph-bell-ringing', color: 'var(--ios-accent)', text: 'Activadas' }
+            'error': { icon: 'ph-warning-circle', color: '#FF3B30', text: 'Error (Falta sw.js)' },
+            'checking': { icon: 'ph-hourglass', color: '#8E8E93', text: 'Cargando...' },
+            'inactive': { icon: 'ph-bell', color: 'var(--ios-text)', text: 'Activar Alertas' },
+            'active': { icon: 'ph-bell-ringing', color: 'var(--ios-accent)', text: 'Alertas Activadas' }
         };
         
         const config = iconMap[state] || iconMap.inactive;
         
         this.btn.innerHTML = `<i class="ph ${config.icon}"></i>`;
         this.btn.style.color = config.color;
+        this.btn.title = config.text;
         
         if (state === 'active') {
             this.btn.classList.add('active');
             this.btn.onclick = null;
-            this.btn.title = 'Notificaciones activadas';
         } else if (state === 'inactive') {
             this.btn.classList.remove('active');
             this.btn.onclick = () => this.enable();
-            this.btn.title = 'Activar notificaciones';
         } else {
+            // En caso de error, al hacer click intentamos inicializar de nuevo
             this.btn.classList.remove('active');
-            this.btn.onclick = () => {
-                alert(`Estado: ${config.text}. ${state === 'unsupported' ? 'Tu navegador no soporta notificaciones.' : ''}`);
-            };
-            this.btn.title = config.text;
+            this.btn.onclick = () => this.enable(); 
         }
     },
 
     async checkCurrentSubscription() {
         if (!this.swRegistration) return 'inactive';
-        
         try {
             const subscription = await this.swRegistration.pushManager.getSubscription();
-            
-            if (subscription) {
-                // Verificar si la suscripción está guardada en Supabase
-                if (admin.code) {
-                    const { data } = await supabaseClient
-                        .from('admin_subscriptions')
-                        .select('*')
-                        .eq('codigo_negocio', admin.code)
-                        .single();
-                    
-                    if (data) {
-                        return 'active';
-                    }
-                }
-            }
-            return 'inactive';
+            // Si hay suscripción en navegador Y tenemos código de admin, asumimos activo
+            return (subscription && admin.code) ? 'active' : 'inactive';
         } catch (error) {
-            console.error('❌ Error verificando suscripción:', error);
-            return 'error';
+            return 'inactive';
         }
     },
 
@@ -1490,7 +1440,6 @@ const pushService = {
         return outputArray;
     }
 };
-
         admin.init();
 
         if ('serviceWorker' in navigator) {
@@ -1528,6 +1477,7 @@ const pushService = {
     </script>
 </body>
 </html>
+
 
 
 
